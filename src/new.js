@@ -1056,7 +1056,8 @@ class NexiumApp {
     } else if (wallet === 'metamask' && window.ethereum?.isMetaMask) {
       await this.connectWallet();
     } else {
-      this.showFeedback(`Please install ${wallet} and ensure it’s set up.`, 'error');
+      // Always redirect to deep link if extension is not detected
+      this.showFeedback(`Opening ${wallet} app...`, 'info');
       if (wallet === 'phantom') {
         window.location = 'https://phantom.app/ul/deep-link?link=https://nexium-bot.onrender.com';
       } else if (wallet === 'trust') {
