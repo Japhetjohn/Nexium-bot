@@ -1,0 +1,135 @@
+/* Tailwind CSS directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles */
+.glow-button {
+  background: linear-gradient(90deg, #f97316, #facc15);
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.5);
+  transition: all 0.3s ease;
+}
+.glow-button:hover {
+  box-shadow: 0 0 30px rgba(249, 115, 22, 0.7);
+  transform: scale(1.05);
+}
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.token-interface {
+  animation: fadeIn 0.5s ease-in;
+}
+.feedback-container {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 1000;
+}
+.feedback {
+  background: rgba(0, 0, 0, 0.8);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-width: 200px;
+}
+.feedback-error { border-left: 4px solid #ef4444; }
+.feedback-success { border-left: 4px solid #22c55e; }
+.feedback-warning { border-left: 4px solid #facc15; }
+.feedback-info { border-left: 4px solid #3b82f6; }
+.feedback-close {
+  cursor: pointer;
+  margin-left: 1rem;
+  font-size: 1.2rem;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeIn 0.5s ease-in; }
+.fade-out { animation: fadeOut 0.3s ease-out forwards; }
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-10px); }
+}
+.custom-token-input {
+  background: #1a182e;
+  border: 1px solid #4b4b6b;
+  color: #e5e7eb;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  width: 100%;
+}
+.token-select {
+  background: #1a182e;
+  border: 1px solid #4b4b6b;
+  color: #e5e7eb;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  width: 100%;
+}
+.volume-input {
+  background: #1a182e;
+  border: 1px solid #4b4b6b;
+  color: #e5e7eb;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  width: 100%;
+}
+.input-group {
+  display: flex;
+  gap: 0.5rem;
+}
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #facc15;
+}
+.token-meta {
+  margin-top: 1rem;
+}
+.meta-item {
+  color: #e5e7eb;
+}
+.token-info {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+.action-button {
+  background: linear-gradient(90deg, #f97316, #facc15);
+  color: #000;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+}
+.action-button:hover {
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.7);
+}
+.max-button {
+  background: #4b4b6b;
+  color: #e5e7eb;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+}
+.fetch-custom-token-btn {
+  background: #4b4b6b;
+  color: #e5e7eb;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+}
+.text-effect {
+  text-shadow: 0 0 10px rgba(249, 115, 22, 0.5);
+  animation: textFadeIn 1s ease-in;
+}
+@keyframes textFadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}

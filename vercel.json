@@ -1,0 +1,15 @@
+{
+  "builds": [
+    {
+      "src": "./index.js",
+      "use": "@vercel/node",
+      "config": { "distDir": "dist" }
+    }
+  ],
+  "routes": [
+    { "src": "/add-volume", "dest": "/add-volume.html", "headers": { "Cache-Control": "no-cache" } },
+    { "src": "/(logo.png|favicon.svg)", "dest": "/$1" },
+    { "src": "/assets/(.*)", "dest": "/assets/$1" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}

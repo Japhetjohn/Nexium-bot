@@ -1,0 +1,34 @@
+{
+  "name": "nexium-crypto-bot",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
+    "@rollup/plugin-inject": "^5.0.5",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "terser": "^5.43.1",
+    "vite": "^7.0.5"
+  },
+  "dependencies": {
+    "@solana/spl-token": "latest",
+    "@solana/web3.js": "^1.98.2",
+    "@tailwindcss/forms": "^0.5.10",
+    "@viaprotocol/web3-wallets": "^1.1.14",
+    "@walletconnect/ethereum-provider": "^2.21.5",
+    "@walletconnect/universal-provider": "^2.21.5",
+    "bitcoinjs-lib": "^6.1.7",
+    "buffer": "^6.0.3",
+    "dotenv": "^17.2.1",
+    "ethers": "^6.15.0",
+    "i": "^0.3.7",
+    "qrcode": "^1.5.4",
+    "xrpl": "^4.4.0"
+  }
+}

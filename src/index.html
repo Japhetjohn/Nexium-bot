@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    img-src 'self' https://nexium-bot.onrender.com data:;
+    style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com;
+    font-src 'self' https://cdnjs.cloudflare.com;
+    connect-src 'self' https://cloud.walletconnect.com https://solana-mainnet.api.syndica.io;
+    script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com;
+  ">
+  <link rel="icon" type="image/png" href="/favicon.svg">
+  <title>Nexium Volume bot | Launch</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/4.1.0/web3.min.js"></script>
+  <script type="module" src="main.js"></script>
+  <script type="module" src="config.js"></script>
+  <style>
+    body {
+      background: linear-gradient(45deg, #0d0c1d, #1a182e, #1a0c4b);
+      background-size: 400%;
+      animation: gradientShift 15s ease infinite;
+      position: relative;
+    }
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    #backgroundCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      opacity: 0.3;
+      pointer-events: none;
+    }
+    nav, main, footer, section {
+      position: relative;
+      z-index: 1;
+    }
+    h1 {
+      text-shadow: 0 0 10px rgba(250, 204, 21, 0.8);
+    }
+    .glow-button {
+      background: linear-gradient(45deg, #facc15, #f97316);
+      box-shadow: 0 0 15px rgba(250, 204, 21, 0.7);
+    }
+    .glow-button:hover {
+      box-shadow: 0 0 25px rgba(250, 204, 21, 1);
+      transform: scale(1.05);
+    }
+    main {
+      min-height: 60vh;
+      padding-top: 2rem;
+    }
+    .nav-menu {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+      align-items: center;
+    }
+    .nav-menu a {
+      text-align: center;
+      width: 100%;
+      max-width: 200px;
+      padding: 8px 16px;
+      color: #d1d5db;
+      font-weight: 600;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .nav-menu a:hover {
+      color: #facc15;
+    }
+    @media (min-width: 640px) {
+      .nav-menu {
+        flex-direction: row;
+        justify-content: center;
+      }
+      .nav-menu a {
+        width: auto;
+        padding: 8px 16px;
+      }
+    }
+    .token-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1.5rem;
+    }
+    @media (max-width: 768px) {
+      .token-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 480px) {
+      .token-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .token-card {
+      background: #1a182e;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      border: 1px solid #f97316;
+      box-shadow: 0 0 10px rgba(250, 204, 21, 0.3);
+      transition: transform 0.2s, box-shadow 0.2s;
+      text-align: center;
+    }
+    .token-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 0 15px rgba(250, 204, 21, 0.7);
+    }
+    .token-card p {
+      margin: 0.5rem 0;
+      font-size: 0.9rem;
+    }
+    .token-card .name {
+      font-weight: bold;
+      font-size: 1.1rem;
+      color: #facc15;
+    }
+    .token-card .address {
+      word-break: break-all;
+      color: #d1d5db;
+    }
+    .token-card .market-cap {
+      color: #9ca3af;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal.active {
+      display: flex;
+    }
+    .modal-content {
+      background: #1a182e;
+      padding: 24px;
+      border-radius: 12px;
+      border: 1px solid #f97316;
+      max-width: 400px;
+      width: 90%;
+    }
+    .modal-content button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      background: linear-gradient(45deg, #facc15, #f97316);
+      color: #000;
+      font-weight: bold;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .modal-content button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 15px rgba(250, 204, 21, 1);
+    }
+    .modal-content button.connecting {
+      background: #6b7280;
+      cursor: not-allowed;
+    }
+    .modal-content button.connected {
+      background: #10b981;
+    }
+    .feedback-container {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      z-index: 10000;
+    }
+    .feedback {
+      padding: 1rem;
+      border-radius: 0.5rem;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .feedback-success {
+      background: #10b981;
+    }
+    .feedback-error {
+      background: #ef4444;
+    }
+    .feedback-info {
+      background: #3b82f6;
+    }
+    .fade-in {
+      animation: fadeIn 0.3s ease-in;
+    }
+    .fade-out {
+      animation: fadeOut 0.3s ease-out forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeOut {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(10px); }
+    }
+  </style>
+</head>
+<body class="bg-[#0d0c1d] text-white font-sans flex flex-col min-h-screen">
+  <canvas id="backgroundCanvas"></canvas>
+  <nav class="w-full max-w-3xl mx-auto flex flex-col items-center bg-[#1a182e] p-4 rounded-xl shadow border border-orange-400 gap-4">
+    <div class="flex items-center justify-center">
+      <img src="/logo.png" alt="Nexium-MTX Logo" id="title-logo" class="h-14 w-14" onerror="console.log('Logo load failed'); this.classList.add('hidden')">
+      <span class="text-lg font-bold text-yellow-400 -ml-1">Nexium-MTX</span>
+    </div>
+    <div class="flex flex-col items-center gap-2 w-full">
+      <div class="nav-menu flex flex-col gap-2" id="nav-menu">
+        <a href="index.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Home</a>
+        <a href="about.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">About</a>
+        <a href="add-volume.html" class="text-gray-300 hover:text-yellow-400 font-semibold py-2 px-4">Token</a>
+      </div>
+    </div>
+  </nav>
+  <div id="wallet-modal" class="modal">
+    <div class="modal-content">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-yellow-400 text-lg font-semibold">Connect Wallet</h2>
+        <button id="close-modal" class="text-white text-2xl" aria-label="Close modal">&times;</button>
+      </div>
+      <button id="connect-metamask" class="animate-pulse" aria-label="Connect MetaMask">Connect MetaMask</button>
+      <button id="connect-phantom" class="animate-pulse" aria-label="Connect Phantom">Connect Phantom</button>
+    </div>
+  </div>
+  <div id="metamaskPrompt" class="hidden fixed top-4 right-4 bg-red-500 text-white p-4 rounded-xl z-[1000]">
+    <p>No wallet installed. Install <a href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer" class="text-yellow-400 hover:underline">MetaMask</a> or <a href="https://phantom.app/download" target="_blank" rel="noopener noreferrer" class="text-yellow-400 hover:underline">Phantom</a> to continue.</p>
+  </div>
+  <div class="feedback-container"></div>
+  <main class="flex flex-1 items-center justify-center flex-col text-center px-4">
+    <h1 class="text-4xl md:text-5xl font-bold text-yellow-400 mb-8 max-w-lg mx-auto leading-relaxed">boost token volume to earn instant rewards</h1>
+    <a href="add-volume.html">
+      <button id="launchBtn" class="glow-button text-black text-lg font-bold py-4 px-10 rounded-xl transition-transform hover:scale-105 animate-pulse" aria-label="Get Started">Get Started</button>
+    </a>
+  </main>
+  <section class="py-12 px-4 max-w-6xl mx-auto">
+    <h2 class="text-3xl font-bold text-yellow-400 mb-8 text-center" style="text-shadow: 0 0 10px rgba(250, 204, 21, 0.8);">Featured Tokens</h2>
+    <div class="token-grid">
+      <div class="token-card">
+        <p class="name">USDT (ETH)</p>
+        <p class="address">0xdac17f958d2ee523a2206206994597c13d831ec7</p>
+        <p class="market-cap">Market Cap: $120B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">USDC (ETH)</p>
+        <p class="address">0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48</p>
+        <p class="market-cap">Market Cap: $34B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">LINK (ETH)</p>
+        <p class="address">0x514910771af9ca656af840dff83e8264ecf986ca</p>
+        <p class="market-cap">Market Cap: $16B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">LEO (ETH)</p>
+        <p class="address">0x2af5d2ad76741191d15dde7bf6ac92d4bd912ca3</p>
+        <p class="market-cap">Market Cap: $8.9B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">SHIB (ETH)</p>
+        <p class="address">0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce</p>
+        <p class="market-cap">Market Cap: $7.2B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">UNI (ETH)</p>
+        <p class="address">0x1f9840a85d5af5bf1d1762f925bdaddc4201f984</p>
+        <p class="market-cap">Market Cap: $6.4B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">PEPE (ETH)</p>
+        <p class="address">0x6982508145454ce325ddbeb5388b1e9e9b404ee</p>
+        <p class="market-cap">Market Cap: $4.4B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">AAVE (ETH)</p>
+        <p class="address">0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddea9</p>
+        <p class="market-cap">Market Cap: $4.2B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">MNT (ETH)</p>
+        <p class="address">0x3c3a81e81dc49a468bea9d0fc85412f65947f1cf</p>
+        <p class="market-cap">Market Cap: $4.5B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">ENA (ETH)</p>
+        <p class="address">0x57e114b691db7904ca757b1df9d453d4331fd3d5</p>
+        <p class="market-cap">Market Cap: $3B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">USDT (SOL)</p>
+        <p class="address">Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB</p>
+        <p class="market-cap">Market Cap: $120B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">USDC (SOL)</p>
+        <p class="address">EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</p>
+        <p class="market-cap">Market Cap: $34B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">JUP (SOL)</p>
+        <p class="address">JUPyiwrYJFskUPi3on1qnRMyb9KC3bCDevoQAxs6WzD</p>
+        <p class="market-cap">Market Cap: $0.7B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">PYTH (SOL)</p>
+        <p class="address">HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3</p>
+        <p class="market-cap">Market Cap: $0.5B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">RAY (SOL)</p>
+        <p class="address">4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R</p>
+        <p class="market-cap">Market Cap: $0.6B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">BONK (SOL)</p>
+        <p class="address">DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263</p>
+        <p class="market-cap">Market Cap: $1.5B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">WIF (SOL)</p>
+        <p class="address">EKpQGSJtjMFqUZ5dscq4YN5s9of7uUkaeA1QHiNjYUy7</p>
+        <p class="market-cap">Market Cap: $2B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">POPCAT (SOL)</p>
+        <p class="address">6D7NaBelnjprAMg7NNLkwX9FaDgiLu4yaex2dtfuDMdK</p>
+        <p class="market-cap">Market Cap: $1B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">MEW (SOL)</p>
+        <p class="address">HhJpBhRRn4g56VsyLuT8DL5Bv31HkXqsrahTTUCZeZg4</p>
+        <p class="market-cap">Market Cap: $0.8B</p>
+      </div>
+      <div class="token-card">
+        <p class="name">HNT (SOL)</p>
+        <p class="address">hntyVP6YFm1E9D3g8E2An6MmPMwQyzkgCUnxazhS154</p>
+        <p class="market-cap">Market Cap: $1B</p>
+      </div>
+    </div>
+  </section>
+  <footer class="text-center text-sm text-gray-400 py-6 border-t border-gray-700">
+    <p>© 2025 Nexium-volume-bot — Built with ❤</p>
+  </footer>
+  <script>
+    const canvas = document.getElementById('backgroundCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const particles = [];
+    const particleCount = 50;
+
+    class Particle {
+      constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.size = Math.random() * 3 + 1;
+        this.speedX = Math.random() * 0.5 - 0.25;
+        this.speedY = Math.random() * 0.5 - 0.25;
+      }
+      update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+        if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+      }
+      draw() {
+        ctx.fillStyle = 'rgba(250, 204, 21, 0.5)';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    for (let i = 0; i < particleCount; i++) {
+      particles.push(new Particle());
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => {
+        p.update();
+        p.draw();
+      });
+      requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+
+    animate();
+
+    // Initialize NexiumApp
+    import { NexiumApp } from './main.js';
+    const app = new NexiumApp();
+  </script>
+</body>
+</html>
