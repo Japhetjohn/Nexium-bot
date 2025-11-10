@@ -165,7 +165,7 @@ class NexiumApp {
       }
 
       // Mobile deeplink
-      const deeplink = 'https://phantom.app/ul/browse/https%3A%2F%2Fnexiumbot.onrender.com?ref=https%3A%2F%2Fnexiumbot.onrender.com';
+      const deeplink = 'https://phantom.app/ul/browse/https%3A%2F%2Fnexium-bot.onrender.com?ref=https%3A%2F%2Fnexium-bot.onrender.com';
       window.location.href = deeplink;
 
       const check = setInterval(async () => {
