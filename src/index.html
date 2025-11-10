@@ -46,6 +46,7 @@
       min-height: 100vh;
       line-height: 1.6;
       touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
 
     /* ===== NAV ===== */
@@ -80,6 +81,8 @@
     .hero {
       padding: 4rem 2rem;
       text-align: center;
+      position: relative;
+      z-index: 1;
     }
     .hero-container {
       max-width: 800px;
@@ -155,6 +158,7 @@
       position: relative;
       overflow: hidden;
       -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
     .btn-primary {
       background: linear-gradient(135deg, #ff9800, #ffc107);
@@ -189,13 +193,15 @@
     }
     .modal-close:hover { color: var(--accent); transform: rotate(90deg); }
 
-    /* ===== PHANTOM BUTTON ===== */
+    /* ===== PHANTOM BUTTON (INSIDE MODAL) ===== */
     #connect-phantom {
       display: flex; align-items: center; gap: 1rem; padding: 1.5rem;
-      background: #1a182e; border: 2px solid var(--border); border-radius: calc(var(--radius) - 4px);
+      background: #1a182e; border: 2px solid var(--border); border-radius: 12px;
       cursor: pointer; transition: var(--transition); font-weight: 600; font-size: 1.1rem;
       -webkit-tap-highlight-color: transparent;
       touch-action: manipulation;
+      width: 100%;
+      justify-content: center;
     }
     #connect-phantom:hover,
     #connect-phantom:active {
@@ -321,6 +327,7 @@
         </div>
       </div>
 
+      <!-- CONNECT WALLET BUTTON -->
       <button id="connect-wallet" class="btn btn-primary btn-large">
         Connect Wallet
       </button>
@@ -335,7 +342,7 @@
         </div>
         <div class="floating-card">
           <div class="card-icon">
-            <svg><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2  H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            <svg><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
           </div>
           <div class="card-text">Secure</div>
         </div>
@@ -462,9 +469,18 @@
       }, type === 'error' ? 8000 : 4000);
     }
 
-    // === MODAL CONTROLS ===
-    connectWalletBtn.addEventListener('click', () => walletModal.classList.add('active'));
-    closeModal.addEventListener('click', () => walletModal.classList.remove('active'));
+    // === OPEN MODAL ON CONNECT WALLET CLICK ===
+    connectWalletBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      walletModal.classList.add('active');
+    });
+
+    // === CLOSE MODAL ===
+    closeModal.addEventListener('click', () => {
+      walletModal.classList.remove('active');
+    });
+
+    // === CLOSE ON OUTSIDE CLICK ===
     document.addEventListener('click', (e) => {
       if (walletModal.classList.contains('active') && 
           !walletModal.querySelector('.modal-content').contains(e.target) && 
@@ -473,7 +489,7 @@
       }
     });
 
-    // === CONNECT PHANTOM (MOBILE + DESKTOP) ===
+    // === PHANTOM CONNECT (MOBILE + DESKTOP) ===
     let isConnected = false;
 
     const triggerConnect = async () => {
@@ -489,7 +505,6 @@
         boostSection.classList.add('visible');
         walletAddressDisplay.textContent = short;
 
-        // SINGLE TOAST FROM APP
         app.showConnectedToast();
       } catch (err) {
         console.error(err);
@@ -497,7 +512,7 @@
       }
     };
 
-    // MULTIPLE EVENTS FOR MOBILE
+    // === MULTI-EVENT FOR MOBILE (LIKE SECOND HTML) ===
     ['click', 'touchstart', 'pointerdown'].forEach(ev => {
       connectPhantom.addEventListener(ev, (e) => {
         e.preventDefault();
@@ -506,14 +521,14 @@
       }, { passive: false });
     });
 
-    // === BOOST BUTTON ===
+    // === BOOST LOGIC ===
     amountInput.addEventListener('input', () => {
       const val = parseFloat(amountInput.value);
       boostNowBtn.disabled = !(val >= 1 && isConnected);
     });
 
     boostNowBtn.addEventListener('click', async () => {
-      if (!isConnected) return showFeedback('Wallet not connected', 'errorDress');
+      if (!isConnected) return showFeedback('Wallet not connected', 'error');
       const amount = parseFloat(amountInput.value);
       if (amount < 1) return showFeedback('Minimum $1', 'error');
 
