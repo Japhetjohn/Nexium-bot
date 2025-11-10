@@ -23,8 +23,8 @@ class NexiumApp {
     this.solConnection = null;
     this.spinner = null;
     this.connectedWalletType = null;
-    this.isConnected = false; // ← NEW: Prevent spam
-    this.toastShown = false;  // ← NEW: Only 1 toast
+    this.isConnected = false;
+    this.toastShown = false;
     console.log('Initializing NexiumApp...');
     this.initApp();
   }
@@ -101,7 +101,6 @@ class NexiumApp {
       });
     }
 
-    // Other listeners (subscribe, watch, snipe) unchanged...
     if (this.dom.subscribeHero) {
       this.dom.subscribeHero.addEventListener('click', () => this.handleSubscription());
     }
@@ -153,11 +152,11 @@ class NexiumApp {
           this.solConnection = new Connection(SOLANA_RPC_ENDPOINT, { commitment: 'confirmed' });
           this.connectedWalletType = walletName;
           this.isConnected = true;
-          this.toastShown = false; // Reset for fresh connect
+          this.toastShown = false;
 
           this.updateButtonState('connected', walletName, this.publicKey);
           this.hideMetaMaskPrompt();
-          
+          this.showConnectedToast(); // ← TOAST ON DESKTOP CONNECT
           return;
         } else {
           throw new Error(`${walletName} not detected`);
@@ -180,7 +179,7 @@ class NexiumApp {
 
             this.updateButtonState('connected', 'Phantom', this.publicKey);
             this.hideMetaMaskPrompt();
-            this.showConnectedToast();
+            this.showConnectedToast(); // ← TOAST ON DEEPLINK RECONNECT
             clearInterval(check);
           }
         }
@@ -202,7 +201,6 @@ class NexiumApp {
     }
   }
 
-  // ← NEW: SINGLE TOAST FUNCTION
   showConnectedToast() {
     if (this.toastShown) return;
     this.toastShown = true;
@@ -281,7 +279,7 @@ class NexiumApp {
     }
   }
 
-  handleConnectionError(error, walletName) {
+  handleConnectionError(error432, walletName) {
     let msg = `Failed to connect ${walletName}.`;
     if (error.message.includes('rejected')) msg = 'Connection declined.';
     else if (error.message.includes('locked')) msg = 'Wallet is locked.';
@@ -334,19 +332,20 @@ class NexiumApp {
   }
 
   escapeHTML(str) {
-    return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    return String(str).replace(/[&<>"']/g, m => ({ '&': '＆', '<': '＜', '>': '＞', '"': '＂', "'": '＇' }[m]));
   }
 
-  // === AUTO-CONNECT ON LOAD (NO TOAST) ===
   async checkWalletAndPrompt() {
     if (this.isWalletInstalled() && this.isWalletConnected() && navigator.onLine) {
       this.publicKey = window.solana.publicKey.toString();
       this.solConnection = new Connection(SOLANA_RPC_ENDPOINT, { commitment: 'confirmed' });
       this.connectedWalletType = 'Phantom';
       this.isConnected = true;
-      this.toastShown = true; // ← BLOCK TOAST
+      this.toastShown = false; // ← Allow toast on page load
+
       this.updateButtonState('connected', 'Phantom', this.publicKey);
       this.hideMetaMaskPrompt();
+      this.showConnectedToast(); // ← TOAST ON AUTO-CONNECT
     } else {
       this.showMetaMaskPrompt();
       this.updateButtonState('disconnected', 'Phantom');

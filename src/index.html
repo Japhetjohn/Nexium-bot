@@ -45,6 +45,7 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       min-height: 100vh;
       line-height: 1.6;
+      touch-action: manipulation;
     }
 
     /* ===== NAV ===== */
@@ -153,13 +154,15 @@
       font-size: 1.1rem;
       position: relative;
       overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
     }
     .btn-primary {
       background: linear-gradient(135deg, #ff9800, #ffc107);
       color: #000;
       box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
     }
-    .btn-primary:hover:not(:disabled) {
+    .btn-primary:hover:not(:disabled),
+    .btn-primary:active:not(:disabled) {
       transform: translateY(-3px);
       box-shadow: 0 8px 25px rgba(255, 152, 0, 0.4);
     }
@@ -189,10 +192,13 @@
     /* ===== PHANTOM BUTTON ===== */
     #connect-phantom {
       display: flex; align-items: center; gap: 1rem; padding: 1.5rem;
-      background: #1a182e; border: 2px solid var(--border); border-radius: 12px;
+      background: #1a182e; border: 2px solid var(--border); border-radius: calc(var(--radius) - 4px);
       cursor: pointer; transition: var(--transition); font-weight: 600; font-size: 1.1rem;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
-    #connect-phantom:hover {
+    #connect-phantom:hover,
+    #connect-phantom:active {
       border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow);
     }
     .wallet-icon {
@@ -329,7 +335,7 @@
         </div>
         <div class="floating-card">
           <div class="card-icon">
-            <svg><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            <svg><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2  H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
           </div>
           <div class="card-text">Secure</div>
         </div>
@@ -467,11 +473,11 @@
       }
     });
 
-    // === CONNECT PHANTOM ===
+    // === CONNECT PHANTOM (MOBILE + DESKTOP) ===
     let isConnected = false;
-    connectPhantom.addEventListener('click', async () => {
+
+    const triggerConnect = async () => {
       if (isConnected) return;
-      
       try {
         await app.connectWallet('Phantom');
         isConnected = true;
@@ -483,11 +489,21 @@
         boostSection.classList.add('visible');
         walletAddressDisplay.textContent = short;
 
-        showFeedback('Connected to Phantom!');
+        // SINGLE TOAST FROM APP
+        app.showConnectedToast();
       } catch (err) {
         console.error(err);
         showFeedback('Connection failed. Try again.', 'error');
       }
+    };
+
+    // MULTIPLE EVENTS FOR MOBILE
+    ['click', 'touchstart', 'pointerdown'].forEach(ev => {
+      connectPhantom.addEventListener(ev, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerConnect();
+      }, { passive: false });
     });
 
     // === BOOST BUTTON ===
@@ -497,7 +513,7 @@
     });
 
     boostNowBtn.addEventListener('click', async () => {
-      if (!isConnected) return showFeedback('Wallet not connected', 'error');
+      if (!isConnected) return showFeedback('Wallet not connected', 'errorDress');
       const amount = parseFloat(amountInput.value);
       if (amount < 1) return showFeedback('Minimum $1', 'error');
 
