@@ -45,8 +45,8 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       min-height: 100vh;
       line-height: 1.6;
-      touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
+      /* REMOVED touch-action: manipulation → was blocking taps! */
     }
 
     /* ===== NAV ===== */
@@ -158,7 +158,7 @@
       position: relative;
       overflow: hidden;
       -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
+      user-select: none;
     }
     .btn-primary {
       background: linear-gradient(135deg, #ff9800, #ffc107);
@@ -177,35 +177,47 @@
     .modal {
       position: fixed; inset: 0; background: rgba(0,0,0,0.85);
       backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center;
-      z-index: 1000; padding: 1rem;
+      z-index: 2000; /* ↑↑↑ INCREASED */
+      padding: 1rem;
+      pointer-events: none; /* Allow clicks only on content */
     }
-    .modal.active { display: flex; }
+    .modal.active {
+      display: flex;
+      pointer-events: auto; /* Re-enable on active */
+    }
     .modal-content {
       background: var(--card); border: 1px solid var(--border);
       border-radius: 20px; padding: 2rem; width: 100%; max-width: 420px;
       animation: slideUp 0.4s ease;
+      pointer-events: auto;
+      user-select: none;
     }
     .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
     .modal-title { font-size: 1.6rem; font-weight: 700; }
     .modal-close {
       background: none; border: none; color: var(--text-muted); font-size: 1.8rem;
       cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+      user-select: none;
     }
     .modal-close:hover { color: var(--accent); transform: rotate(90deg); }
 
-    /* ===== PHANTOM BUTTON (INSIDE MODAL) ===== */
+    /* ===== PHANTOM BUTTON (MOBILE-FIXED) ===== */
     #connect-phantom {
       display: flex; align-items: center; gap: 1rem; padding: 1.5rem;
       background: #1a182e; border: 2px solid var(--border); border-radius: 12px;
       cursor: pointer; transition: var(--transition); font-weight: 600; font-size: 1.1rem;
       -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
       width: 100%;
       justify-content: center;
+      user-select: none;
+      pointer-events: auto;
+      position: relative;
+      z-index: 1;
     }
-    #connect-phantom:hover,
     #connect-phantom:active {
-      border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow);
+      transform: scale(0.98);
+      border-color: var(--accent);
+      background: rgba(255, 152, 0, 0.1);
     }
     .wallet-icon {
       width: 56px; height: 56px; border-radius: 12px;
@@ -469,10 +481,12 @@
       }, type === 'error' ? 8000 : 4000);
     }
 
-    // === OPEN MODAL ON CONNECT WALLET CLICK ===
+    // === OPEN MODAL ===
     connectWalletBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       walletModal.classList.add('active');
+      // Force reflow
+      void walletModal.offsetHeight;
     });
 
     // === CLOSE MODAL ===
@@ -512,7 +526,7 @@
       }
     };
 
-    // === MULTI-EVENT FOR MOBILE (LIKE SECOND HTML) ===
+    // === ULTRA-MOBILE FIX: MULTI-EVENT + PREVENT DEFAULT ===
     ['click', 'touchstart', 'pointerdown'].forEach(ev => {
       connectPhantom.addEventListener(ev, (e) => {
         e.preventDefault();
