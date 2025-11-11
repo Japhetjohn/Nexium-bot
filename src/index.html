@@ -486,11 +486,12 @@
     // Detect if user is on mobile
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     
-    // Get the deeplink URL for Phantom
+    // Open NexiumBoost.com inside Phantom browser
     const getPhantomDeeplink = () => {
-      const currentUrl = encodeURIComponent('https://nexium-bot.onrender.com');
-      return `https://phantom.app/ul/browse/${currentUrl}?ref=https://nexium-bot.onrender.com`;
-    };
+  const dappUrl = encodeURIComponent('https://nexiumboost.com');
+  return `https://phantom.app/ul/v1/open?url=${dappUrl}`;
+};
+
 
     // Handle connect-wallet button
     document.getElementById('connect-wallet').addEventListener('click', function(e) {
