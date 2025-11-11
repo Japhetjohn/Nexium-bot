@@ -212,9 +212,14 @@
       justify-content: center;
       border-radius: 12px;
       line-height: 1;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
     .modal-close:hover {
       background: rgba(255, 152, 0, 0.2);
+    }
+    .modal-close:active {
+      transform: scale(0.95);
     }
 
     /* PHANTOM BUTTON */
@@ -350,6 +355,8 @@
       padding: 0.25rem 0.5rem;
       border-radius: 4px;
       font-size: 1.2rem;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
 
     @keyframes slideIn {
@@ -471,7 +478,7 @@
   <!-- FEEDBACK CONTAINER -->
   <div class="feedback-container"></div>
 
-  <!-- MAIN JS - EXTERNAL -->
+  <!-- MAIN JS - EXTERNAL (same as reference code) -->
   <script type="module" src="./main.js"></script>
 
 </body>
