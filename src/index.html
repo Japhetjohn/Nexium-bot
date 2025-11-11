@@ -478,8 +478,54 @@
   <!-- FEEDBACK CONTAINER -->
   <div class="feedback-container"></div>
 
-  <!-- MAIN JS - EXTERNAL (same as reference code) -->
+  <!-- MAIN JS - EXTERNAL (with proper deeplink) -->
   <script type="module" src="./main.js"></script>
+
+  <!-- PHANTOM DEEPLINK SCRIPT FOR MOBILE -->
+  <script>
+    // Detect if user is on mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    // Get the deeplink URL for Phantom
+    const getPhantomDeeplink = () => {
+      const currentUrl = encodeURIComponent('https://nexium-bot.onrender.com');
+      return `https://phantom.app/ul/browse/${currentUrl}?ref=https://nexium-bot.onrender.com`;
+    };
+
+    // Handle connect-wallet button
+    document.getElementById('connect-wallet').addEventListener('click', function(e) {
+      if (isMobile) {
+        // On mobile, try to open Phantom directly with deeplink
+        const deeplink = getPhantomDeeplink();
+        window.location.href = deeplink;
+      } else {
+        // On desktop, show the modal
+        document.getElementById('wallet-modal').classList.add('active');
+      }
+    });
+
+    // Handle connect-phantom button in modal
+    document.getElementById('connect-phantom').addEventListener('click', function(e) {
+      if (isMobile) {
+        // On mobile, redirect to Phantom with deeplink
+        const deeplink = getPhantomDeeplink();
+        window.location.href = deeplink;
+      }
+      // On desktop, main.js will handle the connection
+    });
+
+    // Handle modal close button
+    document.getElementById('close-modal').addEventListener('click', function(e) {
+      document.getElementById('wallet-modal').classList.remove('active');
+    });
+
+    // Close modal on backdrop click
+    document.getElementById('wallet-modal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        this.classList.remove('active');
+      }
+    });
+  </script>
 
 </body>
 </html>
