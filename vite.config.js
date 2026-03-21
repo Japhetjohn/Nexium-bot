@@ -8,6 +8,7 @@ import inject from '@rollup/plugin-inject';
 
 export default defineConfig({
   root: 'src',
+  envDir: '../',
   publicDir: '../public',
   base: '/',
 
